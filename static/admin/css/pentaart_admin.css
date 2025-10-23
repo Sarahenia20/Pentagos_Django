@@ -1,0 +1,77 @@
+/* PentaArt Admin Panel Custom Styles */
+
+:root {
+    --pentaart-primary: #8b5cf6;
+    --pentaart-secondary: #ec4899;
+    --pentaart-dark: #1e1b4b;
+    --pentaart-light: #f5f3ff;
+}
+
+/* Header styling */
+#header {
+    background: linear-gradient(135deg, var(--pentaart-primary) 0%, var(--pentaart-secondary) 100%);
+    color: white;
+}
+
+#branding h1, #branding h1 a:link, #branding h1 a:visited {
+    color: white;
+    font-weight: bold;
+    font-size: 28px;
+}
+
+/* Links */
+a:link, a:visited {
+    color: var(--pentaart-primary);
+}
+
+a:hover {
+    color: var(--pentaart-secondary);
+}
+
+/* Buttons */
+.button, input[type=submit], input[type=button], .submit-row input, button {
+    background: var(--pentaart-primary);
+    border: none;
+}
+
+.button:hover, input[type=submit]:hover, input[type=button]:hover {
+    background: var(--pentaart-secondary);
+}
+
+/* Module styling */
+.module h2, .module caption {
+    background: var(--pentaart-primary);
+}
+
+/* Breadcrumbs */
+div.breadcrumbs {
+    background: var(--pentaart-light);
+    color: var(--pentaart-dark);
+}
+
+/* Selected rows */
+.selected {
+    background-color: var(--pentaart-light);
+}
+
+/* Login page */
+.login {
+    background: linear-gradient(135deg, var(--pentaart-primary) 0%, var(--pentaart-secondary) 100%);
+}
+
+.login #content {
+    background: white;
+    border-radius: 12px;
+    padding: 40px;
+}
+
+.login #header {
+    background: transparent;
+    text-align: center;
+    padding: 20px;
+}
+
+.login #branding h1 {
+    font-size: 36px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}

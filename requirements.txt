@@ -1,11 +1,26 @@
 Django==5.2.6
 djangorestframework==3.16.1
+django-cors-headers==4.9.0
+django-filter==25.2
 Pillow==11.3.0
 python-decouple==3.8
+cloudinary==1.44.1
+django-cloudinary-storage==0.3.0
+djangorestframework-simplejwt==5.5.1
+
+# AI/ML packages for PentaArt (DALL-E only for now)
+openai==1.57.4  # Using 1.x for stability (2.x has proxies parameter issues)
+# google-generativeai==0.8.5  # DISABLED - Only using DALL-E
+numpy>=1.26.0
+diffusers>=0.25.0
+transformers>=4.35.0
+torch>=2.0.0
+accelerate>=0.24.0
+# cairocffi==1.6.1  # Optional - only needed for vector graphics
 
 # Additional packages for production
 gunicorn==21.2.0
-psycopg2-binary==2.9.7
+psycopg2-binary>=2.9.9  # Updated for Python 3.13 compatibility
 redis==5.0.1
 celery==5.3.4
 

@@ -1,0 +1,24 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | PentaArt{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">
+        🎨 PentaArt Admin
+    </a>
+</h1>
+{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/pentaart_admin.css' %}">
+{% endblock %}
+
+{% block nav-global %}
+<div style="float: right; padding: 10px;">
+    <a href="/api/" style="color: white; margin-right: 15px;">📡 API</a>
+    <a href="/" style="color: white;">🏠 Frontend</a>
+</div>
+{% endblock %}
