@@ -112,10 +112,8 @@ export default function StudioPage() {
             base_color: baseColor,
             bg_color: bgColor
           };
-      }
-
-      const artwork = await apiClient.generateArtwork(artworkData);
-
+      }      const artwork = await apiClient.generateArtwork(artworkData);
+      
       console.log("Artwork created:", artwork);
       setArtworkId(artwork.id);
       setProgress(20);

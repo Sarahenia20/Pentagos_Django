@@ -44,13 +44,11 @@ class GPT4oImageGenerator:
         """
         try:
             # GPT-4o image generation via DALL-E 3 endpoint
-            # Note: DALL-E 3 typically takes 30-60 seconds
             response = self.client.images.generate(
-                model="dall-e-3",  # Use dall-e-3 for best quality (slower, ~30-60s)
-                # model="dall-e-2",  # Use dall-e-2 for faster generation (~10-20s)
+                model="dall-e-3",  # GPT-4o uses DALL-E 3 under the hood
                 prompt=prompt,
                 size=image_size,
-                quality=quality,  # 'standard' is faster than 'hd'
+                quality=quality,
                 n=1,
             )
 

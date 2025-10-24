@@ -398,11 +398,6 @@ MIT License - feel free to use for personal or commercial projects.
 
 ### AI Models & APIs
 - **OpenAI GPT-4o / DALL-E 3:** [OpenAI Platform](https://platform.openai.com/)
-- **Google Gemini:** [Google AI](https://ai.google.dev/)
-- **Hugging Face Stable Diffusion:** [Hugging Face](https://huggingface.co/stabilityai)
-  - [Stable Diffusion XL](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0)
-  - [FLUX.1-schnell](https://huggingface.co/black-forest-labs/FLUX.1-schnell)
-  - [Playground v2.5](https://huggingface.co/playgroundai/playground-v2.5-1024px-aesthetic)
 
 ### Algorithmic Art References
 - [erdavids/Generative-Art](https://github.com/erdavids/Generative-Art) - Processing & Python procedural art
@@ -422,4 +417,4 @@ MIT License - feel free to use for personal or commercial projects.
 
 ---
 
-**Built with ❤️ for artists, by artists**
+**Built with ❤️ for artists, by Pentagos artists**
