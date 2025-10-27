@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'api',
     'dashboard',
     'media_processing',
+    'prompt_library',
 ]
 
 MIDDLEWARE = [

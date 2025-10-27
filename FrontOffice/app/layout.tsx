@@ -17,6 +17,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
+<<<<<<< Updated upstream
     <html lang="en">
       <head>
         <style dangerouslySetInnerHTML={{ __html: `html {
@@ -25,6 +26,10 @@ export default function RootLayout({
   --font-mono: ${GeistMono.variable};
 }` }} />
       </head>
+=======
+    // Use the font classNames to ensure identical server/client markup
+    <html lang="en" className={`${GeistSans.className} ${GeistMono.className}`}>
+>>>>>>> Stashed changes
       <body>
         {children}
         <Toaster />

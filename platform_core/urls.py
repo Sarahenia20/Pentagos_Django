@@ -14,6 +14,7 @@ from . import admin as custom_admin
 # Import viewsets
 from media_processing.views import ArtworkViewSet, TagViewSet, CollectionViewSet, AlgorithmicPatternsView, ModerationView
 from accounts.views import UserProfileViewSet, ActivityLogViewSet
+from prompt_library.views import PromptTemplateViewSet, CategoryViewSet, TagViewSet as PromptTagViewSet, UserPromptLibraryViewSet
 
 # Create router for API endpoints
 router = DefaultRouter()
@@ -22,6 +23,10 @@ router.register(r'tags', TagViewSet, basename='tag')
 router.register(r'collections', CollectionViewSet, basename='collection')
 router.register(r'profiles', UserProfileViewSet, basename='profile')
 router.register(r'activities', ActivityLogViewSet, basename='activity')
+router.register(r'prompt-templates', PromptTemplateViewSet, basename='prompttemplate')
+router.register(r'prompt-categories', CategoryViewSet, basename='promptcategory')
+router.register(r'prompt-tags', PromptTagViewSet, basename='prompttag')
+router.register(r'user-prompts', UserPromptLibraryViewSet, basename='userprompts')
 
 urlpatterns = [
     # Admin

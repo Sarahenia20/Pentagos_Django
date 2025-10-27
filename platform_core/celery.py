@@ -54,6 +54,10 @@ app.conf.update(
     task_acks_late=True,  # Acknowledge task after completion (not when started)
     task_reject_on_worker_lost=True,  # Requeue task if worker crashes
 
+    # Keep legacy startup retry behaviour on Celery 6+: explicitly enable
+    # broker connection retries during startup to match Celery 5 behavior.
+    broker_connection_retry_on_startup=True,
+
     # Beat schedule (for periodic tasks if needed)
     beat_schedule={
         # Example: Clean up failed tasks older than 7 days
