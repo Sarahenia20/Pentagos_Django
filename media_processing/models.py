@@ -163,3 +163,32 @@ class Collection(models.Model):
 
     def __str__(self):
         return f"{self.name} by {self.user.username}"
+
+
+class ArtworkLike(models.Model):
+    """Tracks which users liked which artworks"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='likes')
+    artwork = models.ForeignKey(Artwork, on_delete=models.CASCADE, related_name='likes')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ['user', 'artwork']
+
+    def __str__(self):
+        return f"{self.user.username} likes {self.artwork.id}"
+
+
+class Comment(models.Model):
+    """Comments left on artworks by users"""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    artwork = models.ForeignKey(Artwork, on_delete=models.CASCADE, related_name='comments')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments')
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"Comment by {self.user.username} on {self.artwork.id}"

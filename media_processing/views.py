@@ -14,6 +14,11 @@ from .serializers import (
     TagSerializer, CollectionSerializer, CollectionCreateSerializer
 )
 from .utils.algorithmic_art import PATTERN_CATALOG
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+from .ai_providers.moderation import moderate_text
+from rest_framework import status
+from rest_framework.response import Response
 
 
 class ArtworkViewSet(viewsets.ModelViewSet):
@@ -86,9 +91,54 @@ class ArtworkViewSet(viewsets.ModelViewSet):
     def like(self, request, pk=None):
         """Like an artwork"""
         artwork = self.get_object()
+        user = request.user
+
+        # Toggle like: if already liked by user, remove it (unlike), else create like
+        from .models import ArtworkLike
+
+        liked = ArtworkLike.objects.filter(user=user, artwork=artwork).first()
+        if liked:
+            liked.delete()
+            # Decrement likes_count safely
+            if artwork.likes_count > 0:
+                artwork.likes_count -= 1
+                artwork.save(update_fields=['likes_count'])
+            return Response({'status': 'unliked', 'likes_count': artwork.likes_count})
+
+        ArtworkLike.objects.create(user=user, artwork=artwork)
         artwork.likes_count += 1
         artwork.save(update_fields=['likes_count'])
         return Response({'status': 'liked', 'likes_count': artwork.likes_count})
+
+    @action(detail=True, methods=['get', 'post'], permission_classes=[IsAuthenticatedOrReadOnly])
+    def comments(self, request, pk=None):
+        """List or create comments for an artwork"""
+        artwork = self.get_object()
+        from .models import Comment
+        from .serializers import CommentSerializer
+        # moderation helper
+        from .ai_providers.moderation import moderate_text
+
+        if request.method == 'GET':
+            comments = artwork.comments.all().select_related('user')
+            serializer = CommentSerializer(comments, many=True, context={'request': request})
+            return Response(serializer.data)
+
+        # POST - create comment (auth required)
+        if not request.user.is_authenticated:
+            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Run moderation on incoming content before validation/save
+        content = request.data.get('content', '')
+        mod = moderate_text(content)
+        if mod.get('blocked'):
+            return Response({'error': 'Comment blocked by moderation', 'reasons': mod.get('reasons', [])}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = CommentSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        # Ensure artwork is set from URL
+        serializer.save(user=request.user, artwork=artwork)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['get'])
     def status(self, request, pk=None):
@@ -261,3 +311,19 @@ class AlgorithmicPatternsView(APIView):
             'categories': list(patterns_by_category.keys()),
             'total_patterns': len(PATTERN_CATALOG)
         })
+
+
+
+class ModerationView(APIView):
+    """Lightweight moderation precheck endpoint.
+
+    POST /api/moderate/ with JSON {"content": "..."}
+    Returns { allowed: bool, blocked: bool, reasons: [...] }
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        content = request.data.get('content', '')
+        result = moderate_text(content)
+        # Return 200 with moderation result; client can decide how to act
+        return Response(result, status=status.HTTP_200_OK)

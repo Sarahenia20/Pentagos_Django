@@ -27,3 +27,4 @@ celery==5.3.4
 # Development packages
 django-debug-toolbar==4.2.0
 pytest-django==4.5.2
+better-profanity

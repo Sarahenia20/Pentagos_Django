@@ -32,14 +32,46 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(profile)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['patch'], permission_classes=[IsAuthenticated])
+    from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+
+    # Accept JSON, form-data and multipart uploads for profile updates
+    @action(detail=False, methods=['patch'], permission_classes=[IsAuthenticated], parser_classes=[MultiPartParser, FormParser, JSONParser])
     def update_me(self, request):
         """Update current user's profile"""
         profile = request.user.profile
+
+        # Handle updates to the related User model (username/email) if present
+        user_changed = False
+        username = request.data.get('username')
+        email = request.data.get('email')
+
+        if username and username != request.user.username:
+            # Basic validation: ensure username is not taken
+            if User.objects.filter(username=username).exclude(pk=request.user.pk).exists():
+                return Response({'username': 'This username is already taken.'}, status=status.HTTP_400_BAD_REQUEST)
+            request.user.username = username
+            user_changed = True
+
+        if email and email != request.user.email:
+            # Ensure email uniqueness
+            if User.objects.filter(email=email).exclude(pk=request.user.pk).exists():
+                return Response({'email': 'This email is already in use.'}, status=status.HTTP_400_BAD_REQUEST)
+            request.user.email = email
+            user_changed = True
+
+        if user_changed:
+            request.user.save()
+
+        # Update profile fields
         serializer = self.get_serializer(profile, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data)
+
+        # Return combined user + profile representation for convenience
+        data = serializer.data
+        data['username'] = request.user.username
+        data['email'] = request.user.email
+        return Response(data)
 
 
 @api_view(['POST'])
@@ -71,8 +103,17 @@ def login(request):
             {'error': 'Username and password are required'},
             status=status.HTTP_400_BAD_REQUEST
         )
-
+    # First try authenticating by username
     user = authenticate(username=username, password=password)
+
+    # If not found, and the provided 'username' looks like an email, try to resolve user by email
+    if not user:
+        try:
+            # Try to find a user with this email and authenticate using that user's username
+            user_obj = User.objects.get(email=username)
+            user = authenticate(username=user_obj.username, password=password)
+        except User.DoesNotExist:
+            user = None
 
     if user:
         token, created = Token.objects.get_or_create(user=user)

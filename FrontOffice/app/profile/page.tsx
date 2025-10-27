@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import apiClient from '@/lib/api'
+import { useRouter } from 'next/navigation'
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,12 +17,102 @@ import { UserNav } from "@/components/user-nav"
 
 export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false)
+  const router = useRouter()
+
+  const [profile, setProfile] = useState<any | null>(null)
+  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
+  const [bio, setBio] = useState('')
+  const [location, setLocation] = useState('')
+  const [website, setWebsite] = useState('')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+      try {
+        const res = await fetch(`${API_BASE}/profiles/me/`, { headers: apiClient.headers() })
+        if (!res.ok) {
+          // Not authenticated — redirect to login
+          router.push('/login')
+          return
+        }
+        const data = await res.json()
+        setProfile(data)
+        // data contains profile serializer with username/email via source
+        setUsername(data.username || '')
+        setEmail(data.email || '')
+        setBio(data.bio || '')
+        setLocation(data.location || '')
+        setWebsite(data.website || '')
+        if (data.avatar) setAvatarPreview(data.avatar)
+      } catch (err) {
+        console.error('Failed to load profile', err)
+      }
+    }
+
+    fetchProfile()
+  }, [])
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    setAvatarFile(file)
+    if (file) {
+      const url = URL.createObjectURL(file)
+      setAvatarPreview(url)
+    }
+  }
 
   const handleSave = async () => {
     setIsSaving(true)
-    // Simulate save
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsSaving(false)
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+
+    try {
+      let res
+      // If avatar file present, send multipart/form-data
+      if (avatarFile) {
+        const form = new FormData()
+        form.append('username', username)
+        form.append('email', email)
+        form.append('bio', bio)
+        form.append('location', location)
+        form.append('website', website)
+        form.append('avatar', avatarFile)
+
+        const token = apiClient.getToken()
+        const headers: Record<string,string> = {}
+        if (token) headers['Authorization'] = `Token ${token}`
+
+        res = await fetch(`${API_BASE}/profiles/update_me/`, {
+          method: 'PATCH',
+          headers,
+          body: form,
+        })
+      } else {
+        const token = apiClient.getToken()
+        res = await fetch(`${API_BASE}/profiles/update_me/`, {
+          method: 'PATCH',
+          headers: apiClient.headers(),
+          body: JSON.stringify({ username, email, bio, location, website }),
+        })
+      }
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const msg = data.detail || JSON.stringify(data)
+        alert('Update failed: ' + msg)
+      } else {
+        alert('Profile updated')
+        // Refresh profile data
+        setProfile(data)
+      }
+    } catch (err) {
+      console.error('Failed to update profile', err)
+      alert('Failed to update profile')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -82,18 +174,24 @@ export default function ProfilePage() {
                     {/* Avatar */}
                     <div className="flex items-center gap-6">
                       <Avatar className="h-24 w-24 border-4 dark:border-purple-500 light:border-purple-200">
-                        <AvatarImage src="/placeholder.svg?height=96&width=96" />
-                        <AvatarFallback className="dark:bg-purple-600 light:bg-purple-200 dark:text-white light:text-gray-900 text-2xl">
-                          SH
-                        </AvatarFallback>
+                        {avatarPreview ? (
+                          <AvatarImage src={avatarPreview} />
+                        ) : (
+                          <AvatarFallback className="dark:bg-purple-600 light:bg-purple-200 dark:text-white light:text-gray-900 text-2xl">
+                            {username?.slice(0,2).toUpperCase()}
+                          </AvatarFallback>
+                        )}
                       </Avatar>
                       <div>
-                        <Button
-                          variant="outline"
-                          className="dark:border-gray-300 light:border-gray-200 hover:dark:bg-gray-50 hover:light:bg-gray-50 bg-transparent"
-                        >
-                          Change Avatar
-                        </Button>
+                        <label className="inline-flex items-center">
+                          <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                          <Button
+                            variant="outline"
+                            className="dark:border-gray-300 light:border-gray-200 hover:dark:bg-gray-50 hover:light:bg-gray-50 bg-transparent"
+                          >
+                            Change Avatar
+                          </Button>
+                        </label>
                         <p className="text-sm dark:text-gray-500 light:text-gray-400 mt-2">JPG, PNG or GIF. Max 2MB.</p>
                       </div>
                     </div>
@@ -104,11 +202,12 @@ export default function ProfilePage() {
                         <Label htmlFor="username" className="dark:text-gray-200 light:text-gray-700">
                           Username
                         </Label>
-                        <Input
-                          id="username"
-                          defaultValue="@artcreator"
-                          className="dark:bg-gray-800/50 light:bg-purple-50 dark:border-purple-500/30 light:border-purple-300 dark:text-white light:text-gray-900"
-                        />
+                          <Input
+                            id="username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            className="dark:bg-gray-800/50 light:bg-purple-50 dark:border-purple-500/30 light:border-purple-300 dark:text-white light:text-gray-900"
+                          />
                       </div>
 
                       <div className="grid gap-2">
@@ -118,7 +217,8 @@ export default function ProfilePage() {
                         <Input
                           id="email"
                           type="email"
-                          defaultValue="sarah.henia@esprit.tn"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
                           className="dark:bg-gray-800/50 light:bg-purple-50 dark:border-purple-500/30 light:border-purple-300 dark:text-white light:text-gray-900"
                         />
                       </div>
@@ -131,7 +231,8 @@ export default function ProfilePage() {
                           id="bio"
                           placeholder="Tell us about yourself..."
                           className="dark:bg-gray-800/50 light:bg-purple-50 dark:border-purple-500/30 light:border-purple-300 dark:text-white light:text-gray-900 min-h-[100px]"
-                          defaultValue="Digital artist exploring the intersection of AI and creativity."
+                          value={bio}
+                          onChange={(e) => setBio(e.target.value)}
                         />
                       </div>
 
@@ -144,7 +245,8 @@ export default function ProfilePage() {
                             id="location"
                             placeholder="City, Country"
                             className="dark:bg-gray-800/50 light:bg-purple-50 dark:border-purple-500/30 light:border-purple-300 dark:text-white light:text-gray-900"
-                            defaultValue="Tunis, Tunisia"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
                           />
                         </div>
 
@@ -156,6 +258,8 @@ export default function ProfilePage() {
                             id="website"
                             placeholder="https://..."
                             className="dark:bg-gray-800/50 light:bg-purple-50 dark:border-purple-500/30 light:border-purple-300 dark:text-white light:text-gray-900"
+                            value={website}
+                            onChange={(e) => setWebsite(e.target.value)}
                           />
                         </div>
                       </div>

@@ -12,7 +12,7 @@ from rest_framework.authtoken import views as authtoken_views
 from . import admin as custom_admin
 
 # Import viewsets
-from media_processing.views import ArtworkViewSet, TagViewSet, CollectionViewSet, AlgorithmicPatternsView
+from media_processing.views import ArtworkViewSet, TagViewSet, CollectionViewSet, AlgorithmicPatternsView, ModerationView
 from accounts.views import UserProfileViewSet, ActivityLogViewSet
 
 # Create router for API endpoints
@@ -31,6 +31,7 @@ urlpatterns = [
     path('api/', include(router.urls)),
     path('api/auth/', include('accounts.urls')),
     path('api/algorithmic-patterns/', AlgorithmicPatternsView.as_view(), name='algorithmic_patterns'),
+    path('api/moderate/', ModerationView.as_view(), name='moderate'),
 
     # API authentication
     path('api-auth/', include('rest_framework.urls')),

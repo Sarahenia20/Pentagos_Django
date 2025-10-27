@@ -19,13 +19,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <style>{`
-html {
-  font-family: ${GeistSans.style.fontFamily};
+        <style dangerouslySetInnerHTML={{ __html: `html {
+    font-family: '__GeistSans_fb8f2c', '__GeistSans_Fallback_fb8f2c';
   --font-sans: ${GeistSans.variable};
   --font-mono: ${GeistMono.variable};
-}
-        `}</style>
+}` }} />
       </head>
       <body>
         {children}

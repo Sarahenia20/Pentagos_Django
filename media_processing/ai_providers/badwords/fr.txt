@@ -1,0 +1,8 @@
+# French badwords (starter list)
+spam
+arnaque
+merde
+pute
+connard
+idiot
+# add more words as needed

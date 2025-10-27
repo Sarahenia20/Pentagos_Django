@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Artwork, Tag, ArtworkTag, Collection
+from .models import Comment
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -144,3 +145,15 @@ class CollectionCreateSerializer(serializers.ModelSerializer):
             collection.artworks.set(artworks)
 
         return collection
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    # Accept artwork as optional (the view will set artwork from the URL). This avoids validation errors
+    # when clients POST only { "content": "..." } to /artworks/{id}/comments/.
+    artwork = serializers.PrimaryKeyRelatedField(queryset=Artwork.objects.all(), required=False)
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'artwork', 'user', 'content', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
