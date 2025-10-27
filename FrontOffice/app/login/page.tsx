@@ -39,6 +39,7 @@ export default function LoginPage() {
       const token = data.token
       if (token && typeof window !== 'undefined') {
         try { localStorage.setItem('pentaart_token', token) } catch (err) { /* ignore */ }
+        try { document.cookie = `pentaart_token=${token}; path=/; max-age=${60 * 60 * 24 * 30}` } catch (err) { /* ignore */ }
       }
 
       // Redirect to studio or home
@@ -53,8 +54,15 @@ export default function LoginPage() {
   }
 
   const handleSocialLogin = (provider: string) => {
-    console.log("[v0] Social login:", provider)
-    // TODO: Implement OAuth flow with Django backend
+    // Redirect to backend OAuth start endpoint. The backend should handle the
+    // provider-specific flow (exchange code, create or return user, set cookie)
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+    // Common pattern: backend exposes an endpoint to start social login, for
+    // example: /api/auth/social/github/login/ or /api/auth/social/google/login/
+    // If your backend uses a different path, adjust accordingly.
+    const url = `${API_BASE.replace(/\/api$/, '')}/auth/social/${provider}/login/?next=/studio`
+    // Open in the same window to let backend perform redirects/cookie setting
+    window.location.href = url
   }
 
   return (

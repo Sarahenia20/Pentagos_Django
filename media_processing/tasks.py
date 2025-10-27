@@ -15,6 +15,7 @@ from django.core.files.base import ContentFile
 from PIL import Image
 import io
 import logging
+import time
 from datetime import timedelta
 
 from .models import Artwork
@@ -269,6 +270,52 @@ def _save_artwork_image(artwork, image):
     artwork.image.save(filename, ContentFile(img_io.read()), save=True)
 
     logger.info(f"Saved image to {filename}")
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=30)
+def generate_avatar_for_user(self, user_id, prompt, provider='sdxl', image_size='1024x1024'):
+    """Generate an avatar image for a given user and save it to their profile.
+
+    This runs asynchronously via Celery because local model loading can be very slow
+    and should not block HTTP requests.
+    """
+    try:
+        logger.info('generate_avatar_for_user: starting for user_id=%s', user_id)
+        from accounts.models import UserProfile
+        from PIL import Image
+        # Lazy import of huggingface generator
+        from .ai_providers.huggingface import generate_with_huggingface
+
+        try:
+            profile = UserProfile.objects.get(user__id=user_id)
+        except UserProfile.DoesNotExist:
+            logger.error('generate_avatar_for_user: UserProfile not found for user_id=%s', user_id)
+            return {'status': 'error', 'message': 'user not found'}
+
+        # Generate image (this may download model weights on first run)
+        model_key = provider if provider in ('sdxl', 'sd15', 'flux', 'playground') else 'sdxl'
+        image = generate_with_huggingface(prompt, model=model_key, image_size=image_size)
+
+        # Save image to profile.avatar as PNG
+        buf = io.BytesIO()
+        image.save(buf, format='PNG')
+        buf.seek(0)
+        filename = f"avatar_{profile.user.id}_{int(time.time())}.png"
+        profile.avatar.save(filename, ContentFile(buf.read()), save=True)
+        profile.save()
+
+        logger.info('generate_avatar_for_user: saved avatar for user=%s path=%s', profile.user.username, profile.avatar.name)
+        return {'status': 'success', 'avatar_url': profile.avatar.url if profile.avatar else None}
+
+    except Exception as exc:
+        logger.exception('generate_avatar_for_user: failed for user_id=%s: %s', user_id, exc)
+        # Retry if possible
+        try:
+            if self.request.retries < self.max_retries:
+                raise self.retry(exc=exc)
+        except Exception:
+            pass
+        return {'status': 'error', 'message': str(exc)}
 
 
 def _create_activity_log(artwork):

@@ -19,16 +19,16 @@ export function UserNav() {
   const [user, setUser] = useState<any | null>(null)
 
   useEffect(() => {
-    const token = apiClient.getToken()
-    if (!token) return
-
     const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
 
     const fetchUser = async () => {
       try {
-        const res = await fetch(`${API_BASE}/auth/me/`, { headers: apiClient.headers() })
+        // Always attempt to fetch current user. If a token exists in localStorage
+        // include it in headers; otherwise rely on session cookie set by the backend.
+        const headers = apiClient.headers()
+        const res = await fetch(`${API_BASE}/auth/me/`, { headers, credentials: 'include' })
         if (!res.ok) {
-          // token invalid or expired
+          // not authenticated
           setUser(null)
           return
         }
@@ -40,8 +40,56 @@ export function UserNav() {
       }
     }
 
+    // Try to fetch user regardless of local token presence. This lets session-based
+    // auth (from OAuth callback) succeed even when the client doesn't have a token.
     fetchUser()
+    // listen for profile updates from other components (e.g., avatar change)
+    const onProfileUpdated = (e: any) => {
+      try {
+        const avatar = e?.detail?.avatar
+        if (avatar) {
+          setUser((prev: any) => ({ ...(prev || {}), profile: { ...(prev?.profile || {}), avatar } }))
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    window.addEventListener('profile-updated', onProfileUpdated as EventListener)
+    return () => window.removeEventListener('profile-updated', onProfileUpdated as EventListener)
   }, [])
+
+  const handleLogout = async () => {
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+    try {
+      // Read CSRF token from cookie and send it in header so Django accepts the POST
+      const getCookie = (name: string) => {
+        if (typeof document === 'undefined') return ''
+        const match = document.cookie.match(new RegExp('(^|; )' + name + '=([^;]+)'))
+        return match ? decodeURIComponent(match[2]) : ''
+      }
+      const csrf = getCookie('csrftoken')
+      // If we have a token in localStorage, include it so TokenAuthentication can authenticate the request
+      const storedToken = typeof window !== 'undefined' ? localStorage.getItem('pentaart_token') : null
+      const headers: Record<string, string> = {}
+      if (csrf) headers['X-CSRFToken'] = csrf
+      if (storedToken) headers['Authorization'] = `Token ${storedToken}`
+
+      const res = await fetch(`${API_BASE}/auth/logout/`, { method: 'POST', credentials: 'include', headers })
+      if (!res.ok) {
+        console.warn('Logout request returned non-OK', res.status)
+      }
+    } catch (err) {
+      console.warn('Logout request failed', err)
+    }
+    // Clear client-side tokens/flags after attempting logout
+    try { localStorage.removeItem('pentaart_token') } catch(e){}
+    try { document.cookie = 'pentaart_token=; path=/; max-age=0' } catch(e){}
+    try { sessionStorage.removeItem('pentaart_token_applied') } catch(e){}
+    setUser(null)
+    // redirect to home
+    try { window.location.href = '/' } catch(e){}
+  }
 
   return (
     <header className="border-b dark:border-purple-500/20 light:border-purple-200 dark:bg-gray-900/50 light:bg-white/80 backdrop-blur-md sticky top-0 z-50">
@@ -118,10 +166,8 @@ export function UserNav() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/" className="cursor-pointer text-red-600" onClick={() => { localStorage.removeItem('pentaart_token'); setUser(null); }}>
-                    Log out
-                  </Link>
+                <DropdownMenuItem>
+                  <button onClick={handleLogout} className="w-full text-left cursor-pointer text-red-600">Log out</button>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

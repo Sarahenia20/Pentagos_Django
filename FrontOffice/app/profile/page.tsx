@@ -12,6 +12,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from '@/components/ui/dialog'
+import { toast } from 'sonner'
 import { ArrowRight, User, Settings, CreditCard, Palette } from "lucide-react"
 import { UserNav } from "@/components/user-nav"
 
@@ -27,6 +38,9 @@ export default function ProfilePage() {
   const [website, setWebsite] = useState('')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false)
+  const [generatePrompt, setGeneratePrompt] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -115,6 +129,107 @@ export default function ProfilePage() {
     }
   }
 
+  const openGenerateDialog = () => {
+    setGeneratePrompt('')
+    setShowGenerateDialog(true)
+  }
+
+  const submitGenerateAvatar = async () => {
+    const prompt = generatePrompt.trim()
+    if (!prompt) {
+      toast.error('Please describe the avatar you want')
+      return
+    }
+
+    setIsGenerating(true)
+    setIsSaving(true)
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+
+    // declare loadingToast in outer scope so catch/finally can reference it
+    let loadingToast: string | number | undefined = undefined
+
+    try {
+      const token = apiClient.getToken()
+      if (!token) {
+        toast.error('You must be logged in to generate an avatar')
+        setIsGenerating(false)
+        setIsSaving(false)
+        setShowGenerateDialog(false)
+        return
+      }
+
+  const headers = apiClient.headers()
+  loadingToast = toast.loading('Starting avatar generation...')
+
+      const res = await fetch(`${API_BASE}/profiles/generate_avatar/`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ prompt }),
+      })
+
+      if (res.status === 202) {
+        // Replace loading toast with queued state
+        toast.success('Avatar generation queued', { id: loadingToast })
+        const start = Date.now()
+        const timeoutMs = 1000 * 60 * 3 // 3 minutes
+        const initialAvatar = avatarPreview
+
+        await new Promise<void>((resolve) => {
+          const interval = setInterval(async () => {
+            try {
+              const pRes = await fetch(`${API_BASE}/profiles/me/`, { headers: apiClient.headers() })
+              if (pRes.ok) {
+                const pData = await pRes.json()
+                if (pData.avatar && pData.avatar !== initialAvatar) {
+                  // Before showing, verify the avatar resource is reachable (avoid showing broken image)
+                  const candidate = `${pData.avatar}?v=${Date.now()}`
+                  try {
+                    const r = await fetch(candidate, { method: 'HEAD' })
+                    if (r.ok) {
+                      setAvatarPreview(candidate)
+                      // notify navbar and other listeners
+                      try { window.dispatchEvent(new CustomEvent('profile-updated', { detail: { avatar: candidate } })) } catch (e) {}
+                      clearInterval(interval)
+                      // update loading toast to success
+                      toast.success('Avatar applied to your profile', { id: loadingToast })
+                      resolve()
+                    } else {
+                      // If HEAD returns 404, keep polling until file is available (worker may be finishing upload)
+                      console.debug('Avatar exists in profile but resource not yet reachable, will retry', r.status)
+                    }
+                  } catch (e) {
+                    console.debug('Avatar HEAD check failed, will retry', e)
+                  }
+                }
+              }
+            } catch (err) {
+              console.warn('Polling profile failed', err)
+            }
+            if (Date.now() - start > timeoutMs) {
+              clearInterval(interval)
+              resolve()
+            }
+          }, 3000)
+        })
+
+        // If we reach here without finding a reachable avatar, update the user
+        toast.success('Avatar generation finished (if completed)', { id: loadingToast })
+        setShowGenerateDialog(false)
+      } else {
+        const data = await res.json().catch(() => ({}))
+        const msg = data.detail || JSON.stringify(data)
+        toast.error('Avatar generation failed: ' + msg, { id: loadingToast })
+      }
+    } catch (err) {
+      console.error('Avatar generation failed', err)
+      const message = (err && (err as any).message) ? (err as any).message : String(err)
+      toast.error('Avatar generation failed: ' + message, { id: loadingToast })
+    } finally {
+      setIsGenerating(false)
+      setIsSaving(false)
+    }
+  }
+
   return (
     <div className="min-h-screen dark:bg-black light:bg-white dark:text-white light:text-gray-900 overflow-hidden">
       {/* Background gradient - matching landing page */}
@@ -183,15 +298,55 @@ export default function ProfilePage() {
                         )}
                       </Avatar>
                       <div>
-                        <label className="inline-flex items-center">
-                          <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                        <div className="flex gap-2">
+                          <label className="inline-flex items-center">
+                            <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                            <Button
+                              variant="outline"
+                              className="dark:border-gray-300 light:border-gray-200 hover:dark:bg-gray-50 hover:light:bg-gray-50 bg-transparent"
+                            >
+                              Change Avatar
+                            </Button>
+                          </label>
+
                           <Button
-                            variant="outline"
-                            className="dark:border-gray-300 light:border-gray-200 hover:dark:bg-gray-50 hover:light:bg-gray-50 bg-transparent"
+                            onClick={() => setShowGenerateDialog(true)}
+                            disabled={isSaving || isGenerating}
+                            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
                           >
-                            Change Avatar
+                            {isGenerating ? 'Generating…' : 'AI Generate Avatar'}
                           </Button>
-                        </label>
+
+                          {/* Generate Dialog */}
+                          <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>AI Generate Avatar</DialogTitle>
+                                <DialogDescription>
+                                  Describe the avatar you want (e.g. "stylized portrait, warm tones, smiling")
+                                </DialogDescription>
+                              </DialogHeader>
+
+                              <div className="mt-2">
+                                <Textarea
+                                  value={generatePrompt}
+                                  onChange={(e) => setGeneratePrompt(e.target.value)}
+                                  placeholder='e.g. "stylized portrait, warm tones, smiling"'
+                                  className="min-h-[120px]"
+                                />
+                              </div>
+
+                              <DialogFooter>
+                                <div className="flex gap-2 w-full">
+                                  <Button variant="outline" onClick={() => setShowGenerateDialog(false)} className="flex-1">Cancel</Button>
+                                  <Button onClick={submitGenerateAvatar} disabled={isGenerating} className="flex-1">
+                                    {isGenerating ? 'Generating…' : 'Generate'}
+                                  </Button>
+                                </div>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
                         <p className="text-sm dark:text-gray-500 light:text-gray-400 mt-2">JPG, PNG or GIF. Max 2MB.</p>
                       </div>
                     </div>

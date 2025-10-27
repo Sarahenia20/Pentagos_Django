@@ -4,6 +4,7 @@ import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/toaster'
 import './globals.css'
+import AuthHydrate from '@/components/auth-hydrate'
 
 export const metadata: Metadata = {
   title: 'PentaaART',
@@ -26,6 +27,7 @@ export default function RootLayout({
 }` }} />
       </head>
       <body>
+        <AuthHydrate />
         {children}
         <Toaster />
         <Analytics />
