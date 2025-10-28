@@ -37,6 +37,7 @@ urlpatterns = [
     path('api/auth/', include('accounts.urls')),
     path('api/algorithmic-patterns/', AlgorithmicPatternsView.as_view(), name='algorithmic_patterns'),
     path('api/moderate/', ModerationView.as_view(), name='moderate'),
+    path('api/prompts/generate', include('prompt_library.generate_urls')),
 
     # API authentication
     path('api-auth/', include('rest_framework.urls')),

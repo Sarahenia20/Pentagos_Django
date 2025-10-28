@@ -4,7 +4,6 @@ import { useState } from "react"
 import { Search, Filter, Heart, Download, Share2, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { UserNav } from "@/components/user-nav"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import Image from "next/image"
@@ -82,7 +81,6 @@ export default function GalleryPage() {
       <div className="absolute inset-0 dark:bg-gradient-to-br dark:from-purple-900/20 dark:via-black dark:to-pink-900/20 light:bg-gradient-to-br light:from-purple-100 light:via-white light:to-pink-100" />
 
       <div className="relative z-10">
-        <UserNav />
 
         <div className="container mx-auto px-4 py-8">
           {/* Header */}

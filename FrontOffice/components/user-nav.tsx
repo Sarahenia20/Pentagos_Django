@@ -73,6 +73,24 @@ export function UserNav() {
             Gallery
           </Link>
           <Link
+            href="/prompts"
+            className="text-sm font-medium dark:text-gray-300 light:text-gray-700 dark:hover:text-purple-400 light:hover:text-purple-600 transition-colors"
+          >
+            Prompts
+          </Link>
+          <Link
+            href="/prompts/generate"
+            className="text-sm font-medium dark:text-gray-300 light:text-gray-700 dark:hover:text-purple-400 light:hover:text-purple-600 transition-colors"
+          >
+            Generator
+          </Link>
+          <Link
+            href="/prompts/my-library"
+            className="text-sm font-medium dark:text-gray-300 light:text-gray-700 dark:hover:text-purple-400 light:hover:text-purple-600 transition-colors"
+          >
+            Library
+          </Link>
+          <Link
             href="/studio"
             className="text-sm font-medium dark:text-gray-300 light:text-gray-700 dark:hover:text-purple-400 light:hover:text-purple-600 transition-colors"
           >

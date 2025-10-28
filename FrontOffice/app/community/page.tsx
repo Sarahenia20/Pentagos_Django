@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ArrowRight, TrendingUp, Star, Sparkles, Heart, MessageCircle, Share2 } from "lucide-react"
-import { UserNav } from "@/components/user-nav"
 import { toast } from 'sonner'
 import apiClient from '@/lib/api'
 import { useEffect } from 'react'
@@ -231,7 +230,6 @@ export default function CommunityPage() {
       <div className="absolute inset-0 dark:bg-gradient-to-br dark:from-purple-900/20 dark:via-black dark:to-pink-900/20 light:bg-gradient-to-br light:from-purple-100 light:via-white light:to-pink-100" />
 
       <div className="relative z-10">
-        <UserNav />
 
         {/* Main Content */}
         <main className="container mx-auto px-4 py-12">

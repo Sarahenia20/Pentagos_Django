@@ -20,10 +20,13 @@ class PromptTemplateSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     tag_names = serializers.ListField(child=serializers.CharField(), write_only=True, required=False)
     author = serializers.StringRelatedField(read_only=True)
+    # expose the numeric author id (read-only). DRF will use the field name to look up the attribute.
+    author_id = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = PromptTemplate
-        fields = ['id', 'title', 'prompt_text', 'description', 'category', 'category_id', 'tags', 'tag_names', 'variables', 'author', 'created_at', 'likes_count', 'is_public']
+        # include author_id so the declared field matches the serializer fields
+        fields = ['id', 'title', 'prompt_text', 'description', 'category', 'category_id', 'tags', 'tag_names', 'variables', 'author', 'author_id', 'created_at', 'likes_count', 'is_public']
 
     def create(self, validated_data):
         tags = validated_data.pop('tag_names', [])

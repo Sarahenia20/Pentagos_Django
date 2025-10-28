@@ -13,7 +13,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ArrowRight, User, Settings, CreditCard, Palette } from "lucide-react"
-import { UserNav } from "@/components/user-nav"
 
 export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false)
@@ -121,7 +120,6 @@ export default function ProfilePage() {
       <div className="absolute inset-0 dark:bg-gradient-to-br dark:from-purple-900/20 dark:via-black dark:to-pink-900/20 light:bg-gradient-to-br light:from-purple-100 light:via-white light:to-pink-100" />
 
       <div className="relative z-10">
-        <UserNav />
 
         {/* Main Content */}
         <main className="container mx-auto px-4 py-12">
