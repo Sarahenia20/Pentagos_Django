@@ -3,6 +3,8 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/toaster'
+import ClientRoot from '@/components/ClientRoot'
+import { UserNav } from '@/components/user-nav'
 import './globals.css'
 import AuthHydrate from '@/components/auth-hydrate'
 
@@ -18,16 +20,19 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    // Use the font classNames to ensure identical server/client markup
+    <html lang="en" className={`${GeistSans.className} ${GeistMono.className}`}>
       <head>
-        <style dangerouslySetInnerHTML={{ __html: `html {
-    font-family: '__GeistSans_fb8f2c', '__GeistSans_Fallback_fb8f2c';
-  --font-sans: ${GeistSans.variable};
-  --font-mono: ${GeistMono.variable};
-}` }} />
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `:root{--font-sans: ${GeistSans.variable}; --font-mono: ${GeistMono.variable};}`,
+          }}
+        />
       </head>
       <body>
         <AuthHydrate />
+        <ClientRoot />
+        <UserNav />
         {children}
         <Toaster />
         <Analytics />

@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     # Third-party apps
     'rest_framework',
     'rest_framework.authtoken',
+    'django_filters',
     'corsheaders',
     'cloudinary_storage',
     'cloudinary',
@@ -52,6 +53,7 @@ INSTALLED_APPS = [
     'api',
     'dashboard',
     'media_processing',
+    'prompt_library',
 ]
 
 MIDDLEWARE = [
@@ -209,6 +211,13 @@ CELERY_TIMEZONE = 'UTC'
 # AI Provider API Keys
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
+# Generative AI service configuration
+# Base URL for Google Generative AI (or alternate provider). Defaults to Google's generative API.
+GENERATIVE_API_BASE = config('GENERATIVE_API_BASE', default='https://generative.googleapis.com/v1')
+# Model name to call (without base). Example: 'gemini-pro' or a full model resource name if needed.
+GEMINI_MODEL = config('GEMINI_MODEL', default='gemini-pro')
+# Authentication method for generative API: 'key' will append ?key=API_KEY, 'bearer' will use Authorization: Bearer
+GEMINI_API_AUTH_METHOD = config('GEMINI_API_AUTH_METHOD', default='key')
 HUGGINGFACE_TOKEN = config('HUGGINGFACE_TOKEN', default='')
 GROQ_API_KEY = config('GROQ_API_KEY', default='')
 
