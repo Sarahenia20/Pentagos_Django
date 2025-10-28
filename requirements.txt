@@ -23,7 +23,9 @@ gunicorn==21.2.0
 psycopg2-binary>=2.9.9  # Updated for Python 3.13 compatibility
 redis==5.0.1
 celery==5.3.4
+requests>=2.31.0
 
 # Development packages
 django-debug-toolbar==4.2.0
 pytest-django==4.5.2
+better-profanity

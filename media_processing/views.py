@@ -8,12 +8,18 @@ from django.db import models
 from django_filters.rest_framework import DjangoFilterBackend
 import os
 
-from .models import Artwork, Tag, Collection
+from .models import Artwork, Tag, Collection, Comment
 from .serializers import (
     ArtworkSerializer, ArtworkCreateSerializer,
-    TagSerializer, CollectionSerializer, CollectionCreateSerializer
+    TagSerializer, CollectionSerializer, CollectionCreateSerializer,
+    CommentSerializer
 )
 from .utils.algorithmic_art import PATTERN_CATALOG
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+from .ai_providers.moderation import moderate_text
+from rest_framework import status
+from rest_framework.response import Response
 
 
 class ArtworkViewSet(viewsets.ModelViewSet):
@@ -86,9 +92,54 @@ class ArtworkViewSet(viewsets.ModelViewSet):
     def like(self, request, pk=None):
         """Like an artwork"""
         artwork = self.get_object()
+        user = request.user
+
+        # Toggle like: if already liked by user, remove it (unlike), else create like
+        from .models import ArtworkLike
+
+        liked = ArtworkLike.objects.filter(user=user, artwork=artwork).first()
+        if liked:
+            liked.delete()
+            # Decrement likes_count safely
+            if artwork.likes_count > 0:
+                artwork.likes_count -= 1
+                artwork.save(update_fields=['likes_count'])
+            return Response({'status': 'unliked', 'likes_count': artwork.likes_count})
+
+        ArtworkLike.objects.create(user=user, artwork=artwork)
         artwork.likes_count += 1
         artwork.save(update_fields=['likes_count'])
         return Response({'status': 'liked', 'likes_count': artwork.likes_count})
+
+    @action(detail=True, methods=['get', 'post'], permission_classes=[IsAuthenticatedOrReadOnly])
+    def comments(self, request, pk=None):
+        """List or create comments for an artwork"""
+        artwork = self.get_object()
+        from .models import Comment
+        from .serializers import CommentSerializer
+        # moderation helper
+        from .ai_providers.moderation import moderate_text
+
+        if request.method == 'GET':
+            comments = artwork.comments.all().select_related('user')
+            serializer = CommentSerializer(comments, many=True, context={'request': request})
+            return Response(serializer.data)
+
+        # POST - create comment (auth required)
+        if not request.user.is_authenticated:
+            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Run moderation on incoming content before validation/save
+        content = request.data.get('content', '')
+        mod = moderate_text(content)
+        if mod.get('blocked'):
+            return Response({'error': 'Comment blocked by moderation', 'reasons': mod.get('reasons', [])}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = CommentSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        # Ensure artwork is set from URL
+        serializer.save(user=request.user, artwork=artwork)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['get'])
     def status(self, request, pk=None):
@@ -149,11 +200,51 @@ class ArtworkViewSet(viewsets.ModelViewSet):
                     {'error': 'Failed to upload to Cloudinary'},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
+
         except Exception as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=True, methods=['post'], permission_classes=[AllowAny])
+    def generate_caption(self, request, pk=None):
+        """
+        Trigger AI caption and tags generation for an artwork.
+        
+        Returns task_id immediately and processes in background.
+        Poll /artworks/{id}/ to check when ai_caption is populated.
+        """
+        artwork = self.get_object()
+        
+        if not artwork.image:
+            return Response(
+                {'error': 'No image available for caption generation'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if caption already exists and user wants to regenerate
+        force_regenerate = request.data.get('force', False)
+        if artwork.ai_caption and not force_regenerate:
+            return Response({
+                'status': 'already_generated',
+                'caption': artwork.ai_caption,
+                'tags': artwork.ai_tags,
+                'model': artwork.ai_caption_model,
+                'generated_at': artwork.ai_caption_generated_at,
+                'message': 'Caption already exists. Use force=true to regenerate.'
+            })
+        
+        # Trigger Celery task
+        from .tasks import generate_artwork_caption
+        task = generate_artwork_caption.delay(str(artwork.id))
+        
+        return Response({
+            'status': 'queued',
+            'task_id': task.id,
+            'artwork_id': str(artwork.id),
+            'message': 'Caption generation started. Check artwork for ai_caption field.'
+        }, status=status.HTTP_202_ACCEPTED)
 
 
 class TagViewSet(viewsets.ModelViewSet):
@@ -261,3 +352,75 @@ class AlgorithmicPatternsView(APIView):
             'categories': list(patterns_by_category.keys()),
             'total_patterns': len(PATTERN_CATALOG)
         })
+
+
+
+class ModerationView(APIView):
+    """Lightweight moderation precheck endpoint.
+
+    POST /api/moderate/ with JSON {"content": "..."}
+    Returns { allowed: bool, blocked: bool, reasons: [...] }
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        content = request.data.get('content', '')
+        result = moderate_text(content)
+        # Return 200 with moderation result; client can decide how to act
+        return Response(result, status=status.HTTP_200_OK)
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Comment CRUD operations
+    - List/Create comments via ArtworkViewSet.comments action
+    - Update/Delete individual comments (user must be comment author)
+    """
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    
+    def get_permissions(self):
+        """
+        - List/Retrieve: Anyone can view
+        - Update/Delete: Only comment author
+        """
+        if self.action in ['update', 'partial_update', 'destroy']:
+            return [IsAuthenticated()]
+        return [AllowAny()]
+    
+    def update(self, request, *args, **kwargs):
+        """Update comment - only by original author"""
+        comment = self.get_object()
+        
+        # Check if user is the comment author
+        if comment.user != request.user:
+            return Response(
+                {'error': 'You can only edit your own comments'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Run moderation on updated content
+        content = request.data.get('content', '')
+        from .ai_providers.moderation import moderate_text
+        mod = moderate_text(content)
+        if mod.get('blocked'):
+            return Response(
+                {'error': 'Comment blocked by moderation', 'reasons': mod.get('reasons', [])},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        return super().update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """Delete comment - only by original author"""
+        comment = self.get_object()
+        
+        # Check if user is the comment author
+        if comment.user != request.user:
+            return Response(
+                {'error': 'You can only delete your own comments'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        return super().destroy(request, *args, **kwargs)

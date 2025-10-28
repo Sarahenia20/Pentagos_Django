@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import apiClient from '@/lib/api'
+import { useRouter } from 'next/navigation'
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,17 +12,222 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from '@/components/ui/dialog'
+import { toast } from 'sonner'
 import { ArrowRight, User, Settings, CreditCard, Palette } from "lucide-react"
 import { UserNav } from "@/components/user-nav"
 
 export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false)
+  const router = useRouter()
+
+  const [profile, setProfile] = useState<any | null>(null)
+  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
+  const [bio, setBio] = useState('')
+  const [location, setLocation] = useState('')
+  const [website, setWebsite] = useState('')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false)
+  const [generatePrompt, setGeneratePrompt] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+      try {
+        const res = await fetch(`${API_BASE}/profiles/me/`, { headers: apiClient.headers() })
+        if (!res.ok) {
+          // Not authenticated — redirect to login
+          router.push('/login')
+          return
+        }
+        const data = await res.json()
+        setProfile(data)
+        // data contains profile serializer with username/email via source
+        setUsername(data.username || '')
+        setEmail(data.email || '')
+        setBio(data.bio || '')
+        setLocation(data.location || '')
+        setWebsite(data.website || '')
+        if (data.avatar) setAvatarPreview(data.avatar)
+      } catch (err) {
+        console.error('Failed to load profile', err)
+      }
+    }
+
+    fetchProfile()
+  }, [])
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    setAvatarFile(file)
+    if (file) {
+      const url = URL.createObjectURL(file)
+      setAvatarPreview(url)
+    }
+  }
 
   const handleSave = async () => {
     setIsSaving(true)
-    // Simulate save
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setIsSaving(false)
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+
+    try {
+      let res
+      // If avatar file present, send multipart/form-data
+      if (avatarFile) {
+        const form = new FormData()
+        form.append('username', username)
+        form.append('email', email)
+        form.append('bio', bio)
+        form.append('location', location)
+        form.append('website', website)
+        form.append('avatar', avatarFile)
+
+        const token = apiClient.getToken()
+        const headers: Record<string,string> = {}
+        if (token) headers['Authorization'] = `Token ${token}`
+
+        res = await fetch(`${API_BASE}/profiles/update_me/`, {
+          method: 'PATCH',
+          headers,
+          body: form,
+        })
+      } else {
+        const token = apiClient.getToken()
+        res = await fetch(`${API_BASE}/profiles/update_me/`, {
+          method: 'PATCH',
+          headers: apiClient.headers(),
+          body: JSON.stringify({ username, email, bio, location, website }),
+        })
+      }
+
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const msg = data.detail || JSON.stringify(data)
+        alert('Update failed: ' + msg)
+      } else {
+        alert('Profile updated')
+        // Refresh profile data
+        setProfile(data)
+      }
+    } catch (err) {
+      console.error('Failed to update profile', err)
+      alert('Failed to update profile')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const openGenerateDialog = () => {
+    setGeneratePrompt('')
+    setShowGenerateDialog(true)
+  }
+
+  const submitGenerateAvatar = async () => {
+    const prompt = generatePrompt.trim()
+    if (!prompt) {
+      toast.error('Please describe the avatar you want')
+      return
+    }
+
+    setIsGenerating(true)
+    setIsSaving(true)
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+
+    // declare loadingToast in outer scope so catch/finally can reference it
+    let loadingToast: string | number | undefined = undefined
+
+    try {
+      const token = apiClient.getToken()
+      if (!token) {
+        toast.error('You must be logged in to generate an avatar')
+        setIsGenerating(false)
+        setIsSaving(false)
+        setShowGenerateDialog(false)
+        return
+      }
+
+  const headers = apiClient.headers()
+  loadingToast = toast.loading('Starting avatar generation...')
+
+      const res = await fetch(`${API_BASE}/profiles/generate_avatar/`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ prompt }),
+      })
+
+      if (res.status === 202) {
+        // Replace loading toast with queued state
+        toast.success('Avatar generation queued', { id: loadingToast })
+        const start = Date.now()
+        const timeoutMs = 1000 * 60 * 3 // 3 minutes
+        const initialAvatar = avatarPreview
+
+        await new Promise<void>((resolve) => {
+          const interval = setInterval(async () => {
+            try {
+              const pRes = await fetch(`${API_BASE}/profiles/me/`, { headers: apiClient.headers() })
+              if (pRes.ok) {
+                const pData = await pRes.json()
+                if (pData.avatar && pData.avatar !== initialAvatar) {
+                  // Before showing, verify the avatar resource is reachable (avoid showing broken image)
+                  const candidate = `${pData.avatar}?v=${Date.now()}`
+                  try {
+                    const r = await fetch(candidate, { method: 'HEAD' })
+                    if (r.ok) {
+                      setAvatarPreview(candidate)
+                      // notify navbar and other listeners
+                      try { window.dispatchEvent(new CustomEvent('profile-updated', { detail: { avatar: candidate } })) } catch (e) {}
+                      clearInterval(interval)
+                      // update loading toast to success
+                      toast.success('Avatar applied to your profile', { id: loadingToast })
+                      resolve()
+                    } else {
+                      // If HEAD returns 404, keep polling until file is available (worker may be finishing upload)
+                      console.debug('Avatar exists in profile but resource not yet reachable, will retry', r.status)
+                    }
+                  } catch (e) {
+                    console.debug('Avatar HEAD check failed, will retry', e)
+                  }
+                }
+              }
+            } catch (err) {
+              console.warn('Polling profile failed', err)
+            }
+            if (Date.now() - start > timeoutMs) {
+              clearInterval(interval)
+              resolve()
+            }
+          }, 3000)
+        })
+
+        // If we reach here without finding a reachable avatar, update the user
+        toast.success('Avatar generation finished (if completed)', { id: loadingToast })
+        setShowGenerateDialog(false)
+      } else {
+        const data = await res.json().catch(() => ({}))
+        const msg = data.detail || JSON.stringify(data)
+        toast.error('Avatar generation failed: ' + msg, { id: loadingToast })
+      }
+    } catch (err) {
+      console.error('Avatar generation failed', err)
+      const message = (err && (err as any).message) ? (err as any).message : String(err)
+      toast.error('Avatar generation failed: ' + message, { id: loadingToast })
+    } finally {
+      setIsGenerating(false)
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -82,18 +289,64 @@ export default function ProfilePage() {
                     {/* Avatar */}
                     <div className="flex items-center gap-6">
                       <Avatar className="h-24 w-24 border-4 dark:border-purple-500 light:border-purple-200">
-                        <AvatarImage src="/placeholder.svg?height=96&width=96" />
-                        <AvatarFallback className="dark:bg-purple-600 light:bg-purple-200 dark:text-white light:text-gray-900 text-2xl">
-                          SH
-                        </AvatarFallback>
+                        {avatarPreview ? (
+                          <AvatarImage src={avatarPreview} />
+                        ) : (
+                          <AvatarFallback className="dark:bg-purple-600 light:bg-purple-200 dark:text-white light:text-gray-900 text-2xl">
+                            {username?.slice(0,2).toUpperCase()}
+                          </AvatarFallback>
+                        )}
                       </Avatar>
                       <div>
-                        <Button
-                          variant="outline"
-                          className="dark:border-gray-300 light:border-gray-200 hover:dark:bg-gray-50 hover:light:bg-gray-50 bg-transparent"
-                        >
-                          Change Avatar
-                        </Button>
+                        <div className="flex gap-2">
+                          <label className="inline-flex items-center">
+                            <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                            <Button
+                              variant="outline"
+                              className="dark:border-gray-300 light:border-gray-200 hover:dark:bg-gray-50 hover:light:bg-gray-50 bg-transparent"
+                            >
+                              Change Avatar
+                            </Button>
+                          </label>
+
+                          <Button
+                            onClick={() => setShowGenerateDialog(true)}
+                            disabled={isSaving || isGenerating}
+                            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                          >
+                            {isGenerating ? 'Generating…' : 'AI Generate Avatar'}
+                          </Button>
+
+                          {/* Generate Dialog */}
+                          <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>AI Generate Avatar</DialogTitle>
+                                <DialogDescription>
+                                  Describe the avatar you want (e.g. "stylized portrait, warm tones, smiling")
+                                </DialogDescription>
+                              </DialogHeader>
+
+                              <div className="mt-2">
+                                <Textarea
+                                  value={generatePrompt}
+                                  onChange={(e) => setGeneratePrompt(e.target.value)}
+                                  placeholder='e.g. "stylized portrait, warm tones, smiling"'
+                                  className="min-h-[120px]"
+                                />
+                              </div>
+
+                              <DialogFooter>
+                                <div className="flex gap-2 w-full">
+                                  <Button variant="outline" onClick={() => setShowGenerateDialog(false)} className="flex-1">Cancel</Button>
+                                  <Button onClick={submitGenerateAvatar} disabled={isGenerating} className="flex-1">
+                                    {isGenerating ? 'Generating…' : 'Generate'}
+                                  </Button>
+                                </div>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
                         <p className="text-sm dark:text-gray-500 light:text-gray-400 mt-2">JPG, PNG or GIF. Max 2MB.</p>
                       </div>
                     </div>
@@ -104,11 +357,12 @@ export default function ProfilePage() {
                         <Label htmlFor="username" className="dark:text-gray-200 light:text-gray-700">
                           Username
                         </Label>
-                        <Input
-                          id="username"
-                          defaultValue="@artcreator"
-                          className="dark:bg-gray-800/50 light:bg-purple-50 dark:border-purple-500/30 light:border-purple-300 dark:text-white light:text-gray-900"
-                        />
+                          <Input
+                            id="username"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            className="dark:bg-gray-800/50 light:bg-purple-50 dark:border-purple-500/30 light:border-purple-300 dark:text-white light:text-gray-900"
+                          />
                       </div>
 
                       <div className="grid gap-2">
@@ -118,7 +372,8 @@ export default function ProfilePage() {
                         <Input
                           id="email"
                           type="email"
-                          defaultValue="sarah.henia@esprit.tn"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
                           className="dark:bg-gray-800/50 light:bg-purple-50 dark:border-purple-500/30 light:border-purple-300 dark:text-white light:text-gray-900"
                         />
                       </div>
@@ -131,7 +386,8 @@ export default function ProfilePage() {
                           id="bio"
                           placeholder="Tell us about yourself..."
                           className="dark:bg-gray-800/50 light:bg-purple-50 dark:border-purple-500/30 light:border-purple-300 dark:text-white light:text-gray-900 min-h-[100px]"
-                          defaultValue="Digital artist exploring the intersection of AI and creativity."
+                          value={bio}
+                          onChange={(e) => setBio(e.target.value)}
                         />
                       </div>
 
@@ -144,7 +400,8 @@ export default function ProfilePage() {
                             id="location"
                             placeholder="City, Country"
                             className="dark:bg-gray-800/50 light:bg-purple-50 dark:border-purple-500/30 light:border-purple-300 dark:text-white light:text-gray-900"
-                            defaultValue="Tunis, Tunisia"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value)}
                           />
                         </div>
 
@@ -156,6 +413,8 @@ export default function ProfilePage() {
                             id="website"
                             placeholder="https://..."
                             className="dark:bg-gray-800/50 light:bg-purple-50 dark:border-purple-500/30 light:border-purple-300 dark:text-white light:text-gray-900"
+                            value={website}
+                            onChange={(e) => setWebsite(e.target.value)}
                           />
                         </div>
                       </div>

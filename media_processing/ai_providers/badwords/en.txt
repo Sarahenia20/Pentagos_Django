@@ -1,0 +1,11 @@
+# English badwords (starter list)
+# One word per line, comments start with #
+spam
+scam
+fuck
+shit
+bitch
+asshole
+idiot
+kill
+# add more words as needed
