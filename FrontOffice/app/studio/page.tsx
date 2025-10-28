@@ -246,7 +246,7 @@ export default function StudioPage() {
   };
 
   /**
-   * Save to Cloudinary
+   * Save to Gallery
    */
   const handleSaveToCloudinary = async () => {
     if (!artworkId) return;
@@ -256,9 +256,7 @@ export default function StudioPage() {
     try {
       const response = await fetch(`http://localhost:8000/api/artworks/${artworkId}/save_to_cloudinary/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
+        headers: apiClient.headers(),
       });
 
       const data = await response.json();
@@ -271,9 +269,20 @@ export default function StudioPage() {
         console.log("Cleared artwork from localStorage");
         
         // Show success toast
-        toast.success("☁️ Saved to Gallery!", {
-          description: "Your artwork has been uploaded to Cloudinary"
+        toast.success("✨ Saved to Gallery!", {
+          description: "Your artwork has been saved to your gallery"
         });
+        
+        // Clear the UI state
+        setGeneratedImage(null);
+        setArtworkId(null);
+        setProgress(0);
+        setProgressMessage("");
+        
+        // Redirect to gallery after 1 second
+        setTimeout(() => {
+          window.location.href = '/gallery';
+        }, 1000);
       } else {
         console.error("Save error:", data.error);
         toast.error("Failed to save to gallery", {
