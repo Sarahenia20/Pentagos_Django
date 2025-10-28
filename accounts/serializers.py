@@ -11,13 +11,19 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = [
-            'username', 'email', 'bio', 'avatar', 'website', 'location',
+            'username', 'email', 'bio', 'ai_bio', 'ai_bio_generated_at', 
+            'artist_personality', 'artist_personality_generated_at',
+            'skill_analysis', 'skill_analysis_updated_at',
+            'avatar', 'website', 'location',
             'default_ai_provider', 'default_image_size', 'favorite_algorithm',
             'style_preferences', 'total_artworks', 'total_likes_received',
             'total_views_received', 'is_public_profile', 'followers_count',
             'following_count', 'created_at', 'updated_at'
         ]
         read_only_fields = [
+            'ai_bio', 'ai_bio_generated_at',
+            'artist_personality', 'artist_personality_generated_at',
+            'skill_analysis', 'skill_analysis_updated_at',
             'total_artworks', 'total_likes_received', 'total_views_received',
             'followers_count', 'following_count', 'created_at', 'updated_at'
         ]

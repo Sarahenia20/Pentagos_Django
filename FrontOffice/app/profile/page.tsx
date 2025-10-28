@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Progress } from "@/components/ui/progress"
 import {
   Dialog,
   DialogContent,
@@ -23,7 +24,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { ArrowRight, User, Settings, CreditCard, Palette } from "lucide-react"
+import { ArrowRight, User, Settings, CreditCard, Palette, Sparkles, Loader2 } from "lucide-react"
 import { UserNav } from "@/components/user-nav"
 
 export default function ProfilePage() {
@@ -34,6 +35,15 @@ export default function ProfilePage() {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [bio, setBio] = useState('')
+  const [aiBio, setAiBio] = useState('')
+  const [aiBioGeneratedAt, setAiBioGeneratedAt] = useState('')
+  const [isGeneratingBio, setIsGeneratingBio] = useState(false)
+  const [artistPersonality, setArtistPersonality] = useState<{type: string, description: string} | null>(null)
+  const [artistPersonalityGeneratedAt, setArtistPersonalityGeneratedAt] = useState('')
+  const [isGeneratingPersonality, setIsGeneratingPersonality] = useState(false)
+  const [skillAnalysis, setSkillAnalysis] = useState<any>(null)
+  const [skillAnalysisUpdatedAt, setSkillAnalysisUpdatedAt] = useState('')
+  const [isAnalyzingSkills, setIsAnalyzingSkills] = useState(false)
   const [location, setLocation] = useState('')
   const [website, setWebsite] = useState('')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
@@ -58,6 +68,21 @@ export default function ProfilePage() {
         setUsername(data.username || '')
         setEmail(data.email || '')
         setBio(data.bio || '')
+        setAiBio(data.ai_bio || '')
+        setAiBioGeneratedAt(data.ai_bio_generated_at || '')
+        // Parse artist_personality JSON
+        if (data.artist_personality) {
+          try {
+            const personality = JSON.parse(data.artist_personality)
+            setArtistPersonality(personality)
+          } catch (e) {
+            console.error('Failed to parse artist_personality', e)
+          }
+        }
+        setArtistPersonalityGeneratedAt(data.artist_personality_generated_at || '')
+        // Load skill analysis
+        setSkillAnalysis(data.skill_analysis || null)
+        setSkillAnalysisUpdatedAt(data.skill_analysis_updated_at || '')
         setLocation(data.location || '')
         setWebsite(data.website || '')
         if (data.avatar) setAvatarPreview(data.avatar)
@@ -389,6 +414,365 @@ export default function ProfilePage() {
                           value={bio}
                           onChange={(e) => setBio(e.target.value)}
                         />
+                      </div>
+
+                      {/* AI-Generated Bio Section */}
+                      <div className="grid gap-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="dark:text-gray-200 light:text-gray-700">
+                            AI Artist Bio
+                          </Label>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              setIsGeneratingBio(true)
+                              const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+                              try {
+                                const res = await fetch(`${API_BASE}/profiles/generate_bio/`, {
+                                  method: 'POST',
+                                  headers: apiClient.headers()
+                                })
+                                if (!res.ok) {
+                                  const error = await res.json()
+                                  throw new Error(error.detail || 'Failed to generate bio')
+                                }
+                                toast.success('Bio generation started! Refresh in a few moments.')
+                                
+                                // Poll for updated profile after a few seconds
+                                setTimeout(async () => {
+                                  const profileRes = await fetch(`${API_BASE}/profiles/me/`, { headers: apiClient.headers() })
+                                  if (profileRes.ok) {
+                                    const profileData = await profileRes.json()
+                                    setAiBio(profileData.ai_bio || '')
+                                    setAiBioGeneratedAt(profileData.ai_bio_generated_at || '')
+                                    if (profileData.ai_bio) {
+                                      toast.success('AI bio generated successfully!')
+                                    }
+                                  }
+                                }, 5000)
+                              } catch (err: any) {
+                                toast.error(err.message || 'Failed to generate bio')
+                              } finally {
+                                setIsGeneratingBio(false)
+                              }
+                            }}
+                            disabled={isGeneratingBio}
+                            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
+                          >
+                            {isGeneratingBio ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-4 w-4 mr-2" />
+                                Generate AI Bio
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        {aiBio ? (
+                          <div className="p-4 rounded-lg bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30">
+                            <p className="text-sm dark:text-gray-200 light:text-gray-800 italic">
+                              "{aiBio}"
+                            </p>
+                            {aiBioGeneratedAt && (
+                              <p className="text-xs text-gray-500 mt-2">
+                                Generated {new Date(aiBioGeneratedAt).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500 italic">
+                            No AI bio generated yet. Create some artworks and click "Generate AI Bio" to analyze your artistic style!
+                          </p>
+                        )}
+                      </div>
+
+                      {/* AI Artist Personality Section */}
+                      <div className="grid gap-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="dark:text-gray-200 light:text-gray-700">
+                            🎭 Artist Personality
+                          </Label>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              setIsGeneratingPersonality(true)
+                              const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+                              try {
+                                const res = await fetch(`${API_BASE}/profiles/generate_personality/`, {
+                                  method: 'POST',
+                                  headers: apiClient.headers()
+                                })
+                                if (!res.ok) {
+                                  const error = await res.json()
+                                  throw new Error(error.detail || 'Failed to generate personality')
+                                }
+                                toast.success('Personality generation started! Refresh in a few moments.')
+                                
+                                // Poll for updated profile after a few seconds
+                                setTimeout(async () => {
+                                  const profileRes = await fetch(`${API_BASE}/profiles/me/`, { headers: apiClient.headers() })
+                                  if (profileRes.ok) {
+                                    const profileData = await profileRes.json()
+                                    if (profileData.artist_personality) {
+                                      try {
+                                        const personality = JSON.parse(profileData.artist_personality)
+                                        setArtistPersonality(personality)
+                                        setArtistPersonalityGeneratedAt(profileData.artist_personality_generated_at || '')
+                                        toast.success('Artist personality generated successfully!')
+                                      } catch (e) {
+                                        console.error('Failed to parse personality', e)
+                                      }
+                                    }
+                                  }
+                                }, 5000)
+                              } catch (err: any) {
+                                toast.error(err.message || 'Failed to generate personality')
+                              } finally {
+                                setIsGeneratingPersonality(false)
+                              }
+                            }}
+                            disabled={isGeneratingPersonality}
+                            className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white border-0"
+                          >
+                            {isGeneratingPersonality ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-4 w-4 mr-2" />
+                                Generate Personality
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        {artistPersonality ? (
+                          <div className="p-4 rounded-lg bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border border-indigo-500/30">
+                            <h4 className="text-lg font-semibold dark:text-white light:text-gray-900 mb-2">
+                              {artistPersonality.type}
+                            </h4>
+                            <p className="text-sm dark:text-gray-300 light:text-gray-700">
+                              {artistPersonality.description}
+                            </p>
+                            {artistPersonalityGeneratedAt && (
+                              <p className="text-xs text-gray-500 mt-2">
+                                Generated {new Date(artistPersonalityGeneratedAt).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500 italic">
+                            No personality generated yet. Create some artworks and discover your unique artist archetype!
+                          </p>
+                        )}
+                      </div>
+
+                      {/* AI Skill Analysis Section */}
+                      <div className="grid gap-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="dark:text-gray-200 light:text-gray-700">
+                            📊 Skill Analysis
+                          </Label>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={async () => {
+                              setIsAnalyzingSkills(true)
+                              const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+                              try {
+                                const res = await fetch(`${API_BASE}/profiles/analyze_skills/`, {
+                                  method: 'POST',
+                                  headers: apiClient.headers()
+                                })
+                                if (!res.ok) {
+                                  const error = await res.json()
+                                  throw new Error(error.detail || 'Failed to analyze skills')
+                                }
+                                toast.success('Skill analysis started! Refresh in a few moments.')
+                                
+                                // Poll for updated profile after a few seconds
+                                setTimeout(async () => {
+                                  const profileRes = await fetch(`${API_BASE}/profiles/me/`, { headers: apiClient.headers() })
+                                  if (profileRes.ok) {
+                                    const profileData = await profileRes.json()
+                                    setSkillAnalysis(profileData.skill_analysis || null)
+                                    setSkillAnalysisUpdatedAt(profileData.skill_analysis_updated_at || '')
+                                    if (profileData.skill_analysis) {
+                                      toast.success('Skill analysis completed!')
+                                    }
+                                  }
+                                }, 6000)
+                              } catch (err: any) {
+                                toast.error(err.message || 'Failed to analyze skills')
+                              } finally {
+                                setIsAnalyzingSkills(false)
+                              }
+                            }}
+                            disabled={isAnalyzingSkills}
+                            className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white border-0"
+                          >
+                            {isAnalyzingSkills ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Analyzing...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-4 w-4 mr-2" />
+                                Analyze Skills
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        {skillAnalysis && skillAnalysis.composition ? (
+                          <div className="p-4 rounded-lg bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border border-blue-500/30 space-y-4">
+                            {/* Overall Score */}
+                            <div className="text-center pb-3 border-b border-blue-500/20">
+                              <div className="text-3xl font-bold dark:text-white light:text-gray-900">
+                                {skillAnalysis.overall_score}/100
+                              </div>
+                              <p className="text-xs text-gray-500">Overall Skill Level</p>
+                            </div>
+                            
+                            {/* Individual Skills */}
+                            <div className="space-y-3">
+                              {/* Composition */}
+                              <div>
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="text-sm font-medium dark:text-gray-200 light:text-gray-700">
+                                    Composition
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300">
+                                      {skillAnalysis.composition.level}
+                                    </span>
+                                    <span className="text-xs font-bold dark:text-white light:text-gray-900">
+                                      {skillAnalysis.composition.score}/100
+                                    </span>
+                                    {skillAnalysis.composition.growth !== 0 && (
+                                      <span className={`text-xs ${skillAnalysis.composition.growth > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                        {skillAnalysis.composition.growth > 0 ? '+' : ''}{skillAnalysis.composition.growth}%
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <Progress value={skillAnalysis.composition.score} className="h-2" />
+                              </div>
+
+                              {/* Color Theory */}
+                              <div>
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="text-sm font-medium dark:text-gray-200 light:text-gray-700">
+                                    Color Theory
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300">
+                                      {skillAnalysis.color_theory.level}
+                                    </span>
+                                    <span className="text-xs font-bold dark:text-white light:text-gray-900">
+                                      {skillAnalysis.color_theory.score}/100
+                                    </span>
+                                    {skillAnalysis.color_theory.growth !== 0 && (
+                                      <span className={`text-xs ${skillAnalysis.color_theory.growth > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                        {skillAnalysis.color_theory.growth > 0 ? '+' : ''}{skillAnalysis.color_theory.growth}%
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <Progress value={skillAnalysis.color_theory.score} className="h-2" />
+                              </div>
+
+                              {/* Creativity */}
+                              <div>
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="text-sm font-medium dark:text-gray-200 light:text-gray-700">
+                                    Creativity
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300">
+                                      {skillAnalysis.creativity.level}
+                                    </span>
+                                    <span className="text-xs font-bold dark:text-white light:text-gray-900">
+                                      {skillAnalysis.creativity.score}/100
+                                    </span>
+                                    {skillAnalysis.creativity.growth !== 0 && (
+                                      <span className={`text-xs ${skillAnalysis.creativity.growth > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                        {skillAnalysis.creativity.growth > 0 ? '+' : ''}{skillAnalysis.creativity.growth}%
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <Progress value={skillAnalysis.creativity.score} className="h-2" />
+                              </div>
+
+                              {/* Complexity */}
+                              <div>
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="text-sm font-medium dark:text-gray-200 light:text-gray-700">
+                                    Complexity
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300">
+                                      {skillAnalysis.complexity.level}
+                                    </span>
+                                    <span className="text-xs font-bold dark:text-white light:text-gray-900">
+                                      {skillAnalysis.complexity.score}/100
+                                    </span>
+                                    {skillAnalysis.complexity.growth !== 0 && (
+                                      <span className={`text-xs ${skillAnalysis.complexity.growth > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                        {skillAnalysis.complexity.growth > 0 ? '+' : ''}{skillAnalysis.complexity.growth}%
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <Progress value={skillAnalysis.complexity.score} className="h-2" />
+                              </div>
+
+                              {/* Technical Skill */}
+                              <div>
+                                <div className="flex justify-between items-center mb-1">
+                                  <span className="text-sm font-medium dark:text-gray-200 light:text-gray-700">
+                                    Technical Skill
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300">
+                                      {skillAnalysis.technical_skill.level}
+                                    </span>
+                                    <span className="text-xs font-bold dark:text-white light:text-gray-900">
+                                      {skillAnalysis.technical_skill.score}/100
+                                    </span>
+                                    {skillAnalysis.technical_skill.growth !== 0 && (
+                                      <span className={`text-xs ${skillAnalysis.technical_skill.growth > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                        {skillAnalysis.technical_skill.growth > 0 ? '+' : ''}{skillAnalysis.technical_skill.growth}%
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <Progress value={skillAnalysis.technical_skill.score} className="h-2" />
+                              </div>
+                            </div>
+
+                            {skillAnalysisUpdatedAt && (
+                              <p className="text-xs text-gray-500 pt-2 border-t border-blue-500/20">
+                                Last analyzed {new Date(skillAnalysisUpdatedAt).toLocaleDateString()}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500 italic">
+                            No skill analysis yet. Create artworks and click "Analyze Skills" to see your progression!
+                          </p>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">

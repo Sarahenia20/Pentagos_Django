@@ -124,6 +124,101 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             logging.getLogger(__name__).exception('failed to enqueue avatar generation for user=%s', request.user.username)
             return Response({'detail': f'Failed to queue generation: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def generate_bio(self, request):
+        """
+        Generate AI-powered artist bio based on user's artworks.
+        
+        Analyzes the user's artwork themes, styles, and prompts to create
+        a personalized bio like "Your art explores surreal landscapes and 
+        abstract emotions".
+        
+        Returns 202 with task_id for async processing.
+        """
+        logger = logging.getLogger(__name__)
+        
+        try:
+            from media_processing.tasks import generate_profile_bio
+            task = generate_profile_bio.delay(request.user.id)
+            
+            logger.info(f'Enqueued bio generation for user={request.user.username} task_id={task.id}')
+            
+            return Response({
+                'status': 'queued',
+                'task_id': task.id,
+                'message': 'Bio generation started. Check your profile in a moment.'
+            }, status=status.HTTP_202_ACCEPTED)
+            
+        except Exception as e:
+            logger.exception(f'Failed to enqueue bio generation for user={request.user.username}')
+            return Response({
+                'detail': f'Failed to queue bio generation: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def generate_personality(self, request):
+        """
+        Generate AI-powered artist personality type based on user's artworks.
+        
+        Analyzes the user's artwork patterns, themes, styles, and creative habits
+        to create a personality archetype like "The Bold Experimenter" or 
+        "The Geometric Mystic" with a detailed description.
+        
+        Returns 202 with task_id for async processing.
+        """
+        logger = logging.getLogger(__name__)
+        
+        try:
+            from media_processing.tasks import generate_artist_personality
+            task = generate_artist_personality.delay(request.user.id)
+            
+            logger.info(f'Enqueued personality generation for user={request.user.username} task_id={task.id}')
+            
+            return Response({
+                'status': 'queued',
+                'task_id': task.id,
+                'message': 'Artist personality generation started. Check your profile in a moment.'
+            }, status=status.HTTP_202_ACCEPTED)
+            
+        except Exception as e:
+            logger.exception(f'Failed to enqueue personality generation for user={request.user.username}')
+            return Response({
+                'detail': f'Failed to queue personality generation: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def analyze_skills(self, request):
+        """
+        Analyze user's artistic skill progression across multiple dimensions.
+        
+        Evaluates 5 key skills: Composition, Color Theory, Creativity, 
+        Complexity, and Technical Skill. Returns scores (0-100), levels 
+        (Beginner/Intermediate/Advanced/Expert), and growth percentages.
+        
+        Returns 202 with task_id for async processing.
+        """
+        logger = logging.getLogger(__name__)
+        
+        try:
+            from media_processing.tasks import analyze_skill_progression
+            task = analyze_skill_progression.delay(request.user.id)
+            
+            logger.info(f'Enqueued skill analysis for user={request.user.username} task_id={task.id}')
+            
+            return Response({
+                'status': 'queued',
+                'task_id': task.id,
+                'message': 'Skill analysis started. Check your profile in a moment.'
+            }, status=status.HTTP_202_ACCEPTED)
+            
+        except Exception as e:
+            logger.exception(f'Failed to enqueue skill analysis for user={request.user.username}')
+            return Response({
+                'detail': f'Failed to queue skill analysis: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])

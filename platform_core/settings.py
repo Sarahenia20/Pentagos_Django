@@ -210,6 +210,7 @@ CELERY_TIMEZONE = 'UTC'
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
 HUGGINGFACE_TOKEN = config('HUGGINGFACE_TOKEN', default='')
+GROQ_API_KEY = config('GROQ_API_KEY', default='')
 
 # OAuth / Social providers
 GITHUB_CLIENT_ID = config('GITHUB_CLIENT_ID', default='')
