@@ -12,7 +12,8 @@ import Image from "next/image"
 import { toast } from "sonner"
 import { apiClient, getImageUrl } from "@/lib/api"
 
-interface Artwork {
+interface Artw
+ork {
   id: string
   title: string
   prompt: string
