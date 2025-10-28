@@ -26,6 +26,7 @@ class ArtworkSerializer(serializers.ModelSerializer):
     tags = TagSerializer(source='artwork_tags.tag', many=True, read_only=True)
     generation_duration = serializers.ReadOnlyField()
     image_url = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
 
     def get_image_url(self, obj):
         """Return full URL for image"""
@@ -35,6 +36,10 @@ class ArtworkSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.image.url)
             return obj.image.url
         return None
+    
+    def get_comments_count(self, obj):
+        """Return count of comments for this artwork"""
+        return obj.comments.count()
 
     class Meta:
         model = Artwork
@@ -44,13 +49,15 @@ class ArtworkSerializer(serializers.ModelSerializer):
             'image', 'image_url', 'cloudinary_url', 'image_size', 'generation_started_at', 'generation_completed_at',
             'celery_task_id', 'error_message', 'is_public', 'likes_count', 'views_count',
             'created_at', 'updated_at', 'tags', 'generation_duration',
-            'ai_caption', 'ai_tags', 'ai_caption_model', 'ai_caption_generated_at'
+            'ai_caption', 'ai_tags', 'ai_caption_model', 'ai_caption_generated_at',
+            'comments_count'
         ]
         read_only_fields = [
             'id', 'user', 'status', 'generation_started_at', 'generation_completed_at',
             'celery_task_id', 'error_message', 'likes_count', 'views_count',
             'created_at', 'updated_at', 'generation_duration', 'image',
-            'ai_caption', 'ai_tags', 'ai_caption_model', 'ai_caption_generated_at'
+            'ai_caption', 'ai_tags', 'ai_caption_model', 'ai_caption_generated_at',
+            'comments_count'
         ]
 
 
@@ -154,8 +161,16 @@ class CommentSerializer(serializers.ModelSerializer):
     # Accept artwork as optional (the view will set artwork from the URL). This avoids validation errors
     # when clients POST only { "content": "..." } to /artworks/{id}/comments/.
     artwork = serializers.PrimaryKeyRelatedField(queryset=Artwork.objects.all(), required=False)
+    is_author = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
-        fields = ['id', 'artwork', 'user', 'content', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+        fields = ['id', 'artwork', 'user', 'content', 'created_at', 'updated_at', 'is_author']
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at', 'is_author']
+    
+    def get_is_author(self, obj):
+        """Check if the current user is the comment author"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            return obj.user == request.user
+        return False

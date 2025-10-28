@@ -13,7 +13,7 @@ from rest_framework.authtoken import views as authtoken_views
 from . import admin as custom_admin
 
 # Import viewsets
-from media_processing.views import ArtworkViewSet, TagViewSet, CollectionViewSet, AlgorithmicPatternsView, ModerationView
+from media_processing.views import ArtworkViewSet, TagViewSet, CollectionViewSet, AlgorithmicPatternsView, ModerationView, CommentViewSet
 from accounts.views import UserProfileViewSet, ActivityLogViewSet
 from accounts import views as accounts_views
 
@@ -22,6 +22,7 @@ router = DefaultRouter()
 router.register(r'artworks', ArtworkViewSet, basename='artwork')
 router.register(r'tags', TagViewSet, basename='tag')
 router.register(r'collections', CollectionViewSet, basename='collection')
+router.register(r'comments', CommentViewSet, basename='comment')
 router.register(r'profiles', UserProfileViewSet, basename='profile')
 router.register(r'activities', ActivityLogViewSet, basename='activity')
 

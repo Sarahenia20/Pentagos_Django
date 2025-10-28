@@ -8,10 +8,11 @@ from django.db import models
 from django_filters.rest_framework import DjangoFilterBackend
 import os
 
-from .models import Artwork, Tag, Collection
+from .models import Artwork, Tag, Collection, Comment
 from .serializers import (
     ArtworkSerializer, ArtworkCreateSerializer,
-    TagSerializer, CollectionSerializer, CollectionCreateSerializer
+    TagSerializer, CollectionSerializer, CollectionCreateSerializer,
+    CommentSerializer
 )
 from .utils.algorithmic_art import PATTERN_CATALOG
 from rest_framework.views import APIView
@@ -367,3 +368,59 @@ class ModerationView(APIView):
         result = moderate_text(content)
         # Return 200 with moderation result; client can decide how to act
         return Response(result, status=status.HTTP_200_OK)
+
+
+class CommentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for Comment CRUD operations
+    - List/Create comments via ArtworkViewSet.comments action
+    - Update/Delete individual comments (user must be comment author)
+    """
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    
+    def get_permissions(self):
+        """
+        - List/Retrieve: Anyone can view
+        - Update/Delete: Only comment author
+        """
+        if self.action in ['update', 'partial_update', 'destroy']:
+            return [IsAuthenticated()]
+        return [AllowAny()]
+    
+    def update(self, request, *args, **kwargs):
+        """Update comment - only by original author"""
+        comment = self.get_object()
+        
+        # Check if user is the comment author
+        if comment.user != request.user:
+            return Response(
+                {'error': 'You can only edit your own comments'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Run moderation on updated content
+        content = request.data.get('content', '')
+        from .ai_providers.moderation import moderate_text
+        mod = moderate_text(content)
+        if mod.get('blocked'):
+            return Response(
+                {'error': 'Comment blocked by moderation', 'reasons': mod.get('reasons', [])},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        return super().update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        """Delete comment - only by original author"""
+        comment = self.get_object()
+        
+        # Check if user is the comment author
+        if comment.user != request.user:
+            return Response(
+                {'error': 'You can only delete your own comments'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        return super().destroy(request, *args, **kwargs)
