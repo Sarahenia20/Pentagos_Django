@@ -412,3 +412,167 @@ def optimize_image(artwork_id):
     except Exception as e:
         logger.error(f"Error optimizing image: {str(e)}")
         return {'status': 'error', 'message': str(e)}
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=60)
+def generate_artwork_caption(self, artwork_id):
+    """
+    Generate AI caption and tags for an artwork using image captioning model.
+    
+    Uses Hugging Face transformers pipeline (runs locally) with BLIP or VIT-GPT2
+    models to analyze the artwork image and produce:
+    - A descriptive caption
+    - A list of hashtags/tags
+    
+    Args:
+        artwork_id: UUID of the Artwork instance
+    
+    Returns:
+        dict: Result with status, caption, and tags
+    """
+    try:
+        logger.info(f"Generating caption for artwork {artwork_id}")
+        
+        # Fetch artwork
+        artwork = Artwork.objects.get(id=artwork_id)
+        
+        if not artwork.image:
+            logger.warning(f"Artwork {artwork_id} has no image, cannot generate caption")
+            return {'status': 'error', 'message': 'No image available'}
+        
+        caption_text = None
+        model_used = None
+        
+        try:
+            # Try using transformers pipeline locally
+            from transformers import pipeline
+            from PIL import Image
+            
+            # Try BLIP model first (better quality)
+            models_to_try = [
+                ("Salesforce/blip-image-captioning-base", "image-to-text"),
+                ("nlpconnect/vit-gpt2-image-captioning", "image-to-text"),
+            ]
+            
+            # Open image
+            image = Image.open(artwork.image.path).convert('RGB')
+            
+            for model_name, task in models_to_try:
+                try:
+                    logger.info(f"Trying local model: {model_name} for artwork {artwork_id}")
+                    
+                    # Initialize pipeline (will download model on first use)
+                    captioner = pipeline(task, model=model_name)
+                    
+                    # Generate caption
+                    result = captioner(image)
+                    
+                    # Parse result
+                    if isinstance(result, list) and len(result) > 0:
+                        caption_text = result[0].get('generated_text', '').strip()
+                    elif isinstance(result, dict):
+                        caption_text = result.get('generated_text', '').strip()
+                    
+                    if caption_text:
+                        model_used = model_name
+                        logger.info(f"Success with {model_name}: {caption_text}")
+                        break
+                        
+                except Exception as model_error:
+                    logger.warning(f"Error with {model_name}: {str(model_error)}")
+                    continue
+        
+        except Exception as transform_error:
+            logger.warning(f"Transformers pipeline error: {str(transform_error)}")
+        
+        # Fallback: use prompt if models failed
+        if not caption_text:
+            logger.info(f"Using fallback caption for artwork {artwork_id}")
+            if artwork.prompt:
+                caption_text = f"AI-generated artwork: {artwork.prompt[:80]}"
+                model_used = "prompt-based"
+            else:
+                caption_text = f"AI-generated {artwork.generation_type or 'artwork'}"
+                model_used = "default"
+            logger.info(f"Generated fallback caption: {caption_text}")
+        
+        # Generate tags by extracting keywords from caption
+        tags = _extract_tags_from_caption(caption_text, artwork.prompt)
+        
+        # Save to artwork
+        artwork.ai_caption = caption_text
+        artwork.ai_tags = tags
+        artwork.ai_caption_model = model_used or "fallback"
+        artwork.ai_caption_generated_at = timezone.now()
+        artwork.save(update_fields=['ai_caption', 'ai_tags', 'ai_caption_model', 'ai_caption_generated_at'])
+        
+        logger.info(f"Generated caption for artwork {artwork_id}: {caption_text[:50]}...")
+        
+        return {
+            'status': 'success',
+            'artwork_id': str(artwork_id),
+            'caption': caption_text,
+            'tags': tags
+        }
+    
+    except Artwork.DoesNotExist:
+        logger.error(f"Artwork {artwork_id} not found")
+        return {'status': 'error', 'message': 'Artwork not found'}
+    
+    except Exception as exc:
+        logger.error(f"Error generating caption for artwork {artwork_id}: {str(exc)}")
+        
+        # Retry if possible
+        if self.request.retries < self.max_retries:
+            logger.info(f"Retrying caption generation for {artwork_id} - Attempt {self.request.retries + 1}/{self.max_retries}")
+            raise self.retry(exc=exc)
+        
+        return {'status': 'error', 'message': str(exc)}
+
+
+def _extract_tags_from_caption(caption, prompt=None):
+    """
+    Extract hashtags/keywords from a caption and optional prompt.
+    
+    Simple keyword extraction; for production use NLP or GPT API.
+    
+    Args:
+        caption: Generated caption text
+        prompt: Optional original prompt text
+    
+    Returns:
+        list: List of tag strings
+    """
+    import re
+    
+    tags = set()
+    
+    # Combine caption and prompt for tag extraction
+    text = caption.lower()
+    if prompt:
+        text += " " + prompt.lower()
+    
+    # Common art-related keywords to extract
+    art_keywords = [
+        'abstract', 'surreal', 'geometric', 'neon', 'cyberpunk', 'fantasy',
+        'portrait', 'landscape', 'nature', 'architecture', 'colorful', 'vibrant',
+        'minimalist', 'futuristic', 'retro', 'vintage', 'modern', 'digital',
+        'painting', 'illustration', 'realistic', 'stylized', 'artistic', 'creative',
+        'night', 'day', 'sunset', 'sunrise', 'urban', 'city', 'forest', 'ocean',
+        'mountain', 'sky', 'clouds', 'stars', 'space', 'galaxy', 'sci-fi', 'anime'
+    ]
+    
+    for keyword in art_keywords:
+        if keyword in text:
+            tags.add(keyword)
+    
+    # Extract nouns (simple pattern matching for common words)
+    # This is a basic fallback; production should use spaCy or similar
+    words = re.findall(r'\b[a-z]{4,}\b', text)
+    for word in words[:10]:  # Limit to first 10 words
+        if word not in ['with', 'that', 'this', 'from', 'have', 'been', 'were', 'their']:
+            tags.add(word)
+    
+    # Return as list, limit to 8 tags
+    return list(tags)[:8]
+

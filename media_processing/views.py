@@ -199,11 +199,51 @@ class ArtworkViewSet(viewsets.ModelViewSet):
                     {'error': 'Failed to upload to Cloudinary'},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
+
         except Exception as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=True, methods=['post'], permission_classes=[AllowAny])
+    def generate_caption(self, request, pk=None):
+        """
+        Trigger AI caption and tags generation for an artwork.
+        
+        Returns task_id immediately and processes in background.
+        Poll /artworks/{id}/ to check when ai_caption is populated.
+        """
+        artwork = self.get_object()
+        
+        if not artwork.image:
+            return Response(
+                {'error': 'No image available for caption generation'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if caption already exists and user wants to regenerate
+        force_regenerate = request.data.get('force', False)
+        if artwork.ai_caption and not force_regenerate:
+            return Response({
+                'status': 'already_generated',
+                'caption': artwork.ai_caption,
+                'tags': artwork.ai_tags,
+                'model': artwork.ai_caption_model,
+                'generated_at': artwork.ai_caption_generated_at,
+                'message': 'Caption already exists. Use force=true to regenerate.'
+            })
+        
+        # Trigger Celery task
+        from .tasks import generate_artwork_caption
+        task = generate_artwork_caption.delay(str(artwork.id))
+        
+        return Response({
+            'status': 'queued',
+            'task_id': task.id,
+            'artwork_id': str(artwork.id),
+            'message': 'Caption generation started. Check artwork for ai_caption field.'
+        }, status=status.HTTP_202_ACCEPTED)
 
 
 class TagViewSet(viewsets.ModelViewSet):

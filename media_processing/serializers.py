@@ -43,12 +43,14 @@ class ArtworkSerializer(serializers.ModelSerializer):
             'prompt', 'ai_provider', 'algorithm_name', 'algorithm_params',
             'image', 'image_url', 'cloudinary_url', 'image_size', 'generation_started_at', 'generation_completed_at',
             'celery_task_id', 'error_message', 'is_public', 'likes_count', 'views_count',
-            'created_at', 'updated_at', 'tags', 'generation_duration'
+            'created_at', 'updated_at', 'tags', 'generation_duration',
+            'ai_caption', 'ai_tags', 'ai_caption_model', 'ai_caption_generated_at'
         ]
         read_only_fields = [
             'id', 'user', 'status', 'generation_started_at', 'generation_completed_at',
             'celery_task_id', 'error_message', 'likes_count', 'views_count',
-            'created_at', 'updated_at', 'generation_duration', 'image'
+            'created_at', 'updated_at', 'generation_duration', 'image',
+            'ai_caption', 'ai_tags', 'ai_caption_model', 'ai_caption_generated_at'
         ]
 
 

@@ -356,6 +356,64 @@ export default function CommunityPage() {
                       <p className="text-sm text-gray-200">{selectedArtwork.prompt || selectedArtwork.title}</p>
                     </div>
 
+                    {/* AI Caption Section */}
+                    {selectedArtwork.ai_caption && (
+                      <div className="mb-4 p-3 rounded bg-purple-900/20 border border-purple-500/30">
+                        <h4 className="text-sm uppercase text-purple-300 mb-2 flex items-center gap-2">
+                          <Sparkles className="h-4 w-4" />
+                          AI Caption
+                        </h4>
+                        <p className="text-sm text-gray-200 mb-2">{selectedArtwork.ai_caption}</p>
+                        {selectedArtwork.ai_tags && selectedArtwork.ai_tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {selectedArtwork.ai_tags.map((tag: string, idx: number) => (
+                              <Badge key={idx} variant="outline" className="text-xs bg-purple-500/10 text-purple-300 border-purple-500/30">
+                                #{tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        {selectedArtwork.ai_caption_generated_at && (
+                          <p className="text-xs text-gray-400 mt-2">
+                            Generated {new Date(selectedArtwork.ai_caption_generated_at).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Generate Caption Button */}
+                    {!selectedArtwork.ai_caption && (
+                      <div className="mb-4">
+                        <Button
+                          onClick={async () => {
+                            const token = apiClient.getToken()
+                            if (!token) { toast.error('Please log in to generate caption'); return }
+
+                            toast.info('Generating AI caption...')
+                            try {
+                              const res = await fetch(`${API_BASE}/artworks/${selectedArtwork.id}/generate_caption/`, {
+                                method: 'POST',
+                                headers: apiClient.headers()
+                              })
+                              const body = await res.json()
+                              if (!res.ok) {
+                                toast.error(body.error || 'Failed to generate caption')
+                                return
+                              }
+                              toast.success('Caption generation started! Refresh in a few moments.')
+                            } catch (err) {
+                              toast.error('Failed to generate caption: ' + (err as any).message)
+                            }
+                          }}
+                          size="sm"
+                          className="w-full bg-gradient-to-r from-purple-500 to-pink-500"
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Generate AI Caption
+                        </Button>
+                      </div>
+                    )}
+
                     <div className="mb-4 text-xs text-gray-400 space-y-1">
                       <div><strong className="text-gray-200">AI:</strong> {selectedArtwork.ai_provider || 'N/A'}</div>
                       <div><strong className="text-gray-200">Size:</strong> {selectedArtwork.image_size || 'N/A'}</div>

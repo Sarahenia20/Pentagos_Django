@@ -76,6 +76,12 @@ class Artwork(models.Model):
     likes_count = models.PositiveIntegerField(default=0)
     views_count = models.PositiveIntegerField(default=0)
 
+    # AI-generated captions and tags
+    ai_caption = models.TextField(blank=True, help_text="AI-generated descriptive caption for the artwork")
+    ai_tags = models.JSONField(default=list, blank=True, help_text="AI-generated tags/hashtags as a list of strings")
+    ai_caption_model = models.CharField(max_length=100, blank=True, help_text="Model used for caption generation (e.g., 'blip-2', 'gpt-4-vision')")
+    ai_caption_generated_at = models.DateTimeField(null=True, blank=True, help_text="When the AI caption was generated")
+
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
