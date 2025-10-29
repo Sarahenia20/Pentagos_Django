@@ -8,7 +8,7 @@ services:
     name: pentaart-django
     runtime: python
     buildCommand: "./build.sh"
-    startCommand: "gunicorn platform_core.wsgi:application"
+    startCommand: "gunicorn platform_core.wsgi:application --bind 0.0.0.0:$PORT"
     envVars:
       - key: DATABASE_URL
         fromDatabase:
