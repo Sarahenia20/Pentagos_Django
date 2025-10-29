@@ -4,7 +4,7 @@ import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/toaster'
 import ClientRoot from '@/components/ClientRoot'
-import { UserNav } from '@/components/user-nav'
+import ConditionalNav from '@/components/ConditionalNav'
 import './globals.css'
 import AuthHydrate from '@/components/auth-hydrate'
 
@@ -32,7 +32,7 @@ export default function RootLayout({
       <body>
         <AuthHydrate />
         <ClientRoot />
-        <UserNav />
+        <ConditionalNav />
         {children}
         <Toaster />
         <Analytics />

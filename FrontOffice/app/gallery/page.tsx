@@ -131,6 +131,15 @@ export default function GalleryPage() {
     fetchArtworks()
     loadCollections()
   }, [])
+  
+  // Toggle navbar when artwork modal opens/closes
+  useEffect(() => {
+    if (selectedArtwork) {
+      window.dispatchEvent(new CustomEvent('navbar-toggle', { detail: { hide: true } }))
+    } else {
+      window.dispatchEvent(new CustomEvent('navbar-toggle', { detail: { hide: false } }))
+    }
+  }, [selectedArtwork])
 
   const fetchArtworks = async () => {
     setIsLoading(true)

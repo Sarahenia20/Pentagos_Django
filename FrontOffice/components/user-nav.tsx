@@ -17,6 +17,17 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 export function UserNav() {
   const [user, setUser] = useState<any | null>(null)
+  const [isHidden, setIsHidden] = useState(false)
+
+  useEffect(() => {
+    // Listen for navbar visibility events
+    const handleNavbarToggle = (e: CustomEvent) => {
+      setIsHidden(e.detail?.hide ?? false)
+    }
+
+    window.addEventListener('navbar-toggle' as any, handleNavbarToggle)
+    return () => window.removeEventListener('navbar-toggle' as any, handleNavbarToggle)
+  }, [])
 
   useEffect(() => {
     const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
@@ -92,7 +103,7 @@ export function UserNav() {
   }
 
   return (
-    <header className="border-b dark:border-purple-500/20 light:border-purple-200 dark:bg-gray-900/50 light:bg-white/80 backdrop-blur-md sticky top-0 z-50">
+    <header className={`border-b dark:border-purple-500/20 light:border-purple-200 dark:bg-gray-900/50 light:bg-white/80 backdrop-blur-md sticky top-0 z-50 transition-transform duration-300 ${isHidden ? '-translate-y-full' : 'translate-y-0'}`}>
       <div className="container mx-auto px-4 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
           <div className="text-2xl">🎨</div>

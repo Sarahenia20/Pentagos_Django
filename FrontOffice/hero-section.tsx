@@ -1,3 +1,5 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import PulsingBorderShader from "./components/pulsing-border-shader"
 import { ArrowRight, Sparkles, Palette, Zap, ImageIcon } from "lucide-react"
@@ -19,18 +21,35 @@ export default function Component() {
             </span>
           </Link>
           <div className="flex items-center gap-4">
-            <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-800/50">
-              Gallery
-            </Button>
-            <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-800/50">
+            <Link href="/gallery">
+              <Button variant="ghost" className="text-gray-300 hover:text-white hover:bg-gray-800/50">
+                Gallery
+              </Button>
+            </Link>
+            <Button 
+              variant="ghost" 
+              className="text-gray-300 hover:text-white hover:bg-gray-800/50"
+              onClick={() => {
+                const pricingSection = document.getElementById('pricing-section')
+                pricingSection?.scrollIntoView({ behavior: 'smooth' })
+              }}
+            >
               Pricing
             </Button>
             <Link href="/login">
               <Button
                 size="sm"
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-full"
+                className="bg-transparent border border-purple-500/50 text-purple-300 hover:bg-purple-600/20 rounded-full"
               >
                 Sign In
+              </Button>
+            </Link>
+            <Link href="/register">
+              <Button
+                size="sm"
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-full"
+              >
+                Sign Up
               </Button>
             </Link>
           </div>
@@ -72,13 +91,15 @@ export default function Component() {
                 </Button>
               </Link>
 
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-gray-600 text-white hover:bg-gray-800 px-8 py-6 text-lg rounded-full bg-transparent"
-              >
-                See Gallery
-              </Button>
+              <Link href="/community">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="border-gray-600 text-white hover:bg-gray-800 px-8 py-6 text-lg rounded-full bg-transparent"
+                >
+                  See Gallery
+                </Button>
+              </Link>
             </div>
 
             <div className="flex items-center gap-8 pt-8 text-sm text-gray-400">
@@ -177,7 +198,7 @@ export default function Component() {
       </div>
 
       {/* Pricing Section */}
-      <div className="relative z-10 container mx-auto px-4 py-20">
+      <div id="pricing-section" className="relative z-10 container mx-auto px-4 py-20">
         <div className="text-center mb-16">
           <h2 className="text-4xl lg:text-5xl font-bold mb-4">
             Simple{" "}

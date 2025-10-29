@@ -136,12 +136,12 @@ export default function PromptListClient() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search prompts..."
-          className="flex-1 px-4 py-3 rounded-full bg-white/5 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="flex-1 px-4 py-3 rounded-full dark:bg-white/5 light:bg-gray-100 dark:text-white light:text-gray-900 placeholder:dark:text-gray-400 placeholder:light:text-gray-500 focus:outline-none focus:ring-2 dark:focus:ring-purple-500 light:focus:ring-purple-400 border dark:border-transparent light:border-gray-200"
         />
         <div className="flex gap-2 flex-wrap">
-          <button onClick={() => setSelectedCategory(null)} className={`px-4 py-2 rounded-full text-sm ${selectedCategory === null ? 'bg-purple-600 text-white' : 'bg-white/5 text-gray-200'}`}>All</button>
+          <button onClick={() => setSelectedCategory(null)} className={`px-4 py-2 rounded-full text-sm transition-colors ${selectedCategory === null ? 'bg-purple-600 text-white' : 'dark:bg-white/5 light:bg-gray-100 dark:text-gray-200 light:text-gray-700 hover:dark:bg-white/10 hover:light:bg-gray-200'}`}>All</button>
           {categories.map((c) => (
-            <button key={c.slug} onClick={() => setSelectedCategory(c.slug)} className={`px-4 py-2 rounded-full text-sm ${selectedCategory === c.slug ? 'bg-purple-600 text-white' : 'bg-white/5 text-gray-200'}`}>
+            <button key={c.slug} onClick={() => setSelectedCategory(c.slug)} className={`px-4 py-2 rounded-full text-sm transition-colors ${selectedCategory === c.slug ? 'bg-purple-600 text-white' : 'dark:bg-white/5 light:bg-gray-100 dark:text-gray-200 light:text-gray-700 hover:dark:bg-white/10 hover:light:bg-gray-200'}`}>
               {c.name}
             </button>
           ))}
@@ -149,7 +149,7 @@ export default function PromptListClient() {
       </div>
 
       <div className="mb-6">
-        <label className="text-sm text-gray-300 mr-2">Tags:</label>
+        <label className="text-sm dark:text-gray-300 light:text-gray-700 mr-2 font-medium">Tags:</label>
         <div className="flex gap-2 flex-wrap mt-2">
           {tags.map((t) => {
             const active = selectedTags.includes(t.name)
@@ -159,7 +159,7 @@ export default function PromptListClient() {
                 onClick={() => {
                   setSelectedTags((prev) => prev.includes(t.name) ? prev.filter((x) => x !== t.name) : [...prev, t.name])
                 }}
-                className={`text-sm px-3 py-1 rounded-full border ${active ? 'bg-purple-600 text-white border-transparent' : 'bg-white/3 text-white/80 border-white/6'} hover:scale-105 transition-transform`}
+                className={`text-sm px-3 py-1 rounded-full border transition-all ${active ? 'bg-purple-600 text-white border-transparent' : 'dark:bg-white/3 light:bg-white dark:text-white/80 light:text-gray-700 dark:border-white/6 light:border-gray-200'} hover:scale-105`}
               >
                 {t.name}
               </button>
@@ -171,19 +171,19 @@ export default function PromptListClient() {
       {loading && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="rounded-2xl p-5 bg-white/5 border border-white/6 animate-pulse">
-                  <div className="h-5 rounded w-3/4 mb-3 bg-white/6" />
-                  <div className="h-3 rounded w-full mb-2 bg-white/6" />
-                  <div className="h-28 rounded mb-3 bg-white/6" />
+                <div key={i} className="rounded-2xl p-5 dark:bg-white/5 light:bg-gray-100 dark:border-white/6 light:border-gray-200 border animate-pulse">
+                  <div className="h-5 rounded w-3/4 mb-3 dark:bg-white/6 light:bg-gray-200" />
+                  <div className="h-3 rounded w-full mb-2 dark:bg-white/6 light:bg-gray-200" />
+                  <div className="h-28 rounded mb-3 dark:bg-white/6 light:bg-gray-200" />
                   <div className="flex gap-2">
-                    <div className="h-8 w-20 rounded bg-white/6" />
-                    <div className="h-8 w-20 rounded bg-white/6" />
+                    <div className="h-8 w-20 rounded dark:bg-white/6 light:bg-gray-200" />
+                    <div className="h-8 w-20 rounded dark:bg-white/6 light:bg-gray-200" />
                   </div>
                 </div>
               ))}
             </div>
           )}
-      {error && <div className="text-red-400">{error}</div>}
+      {error && <div className="dark:text-red-400 light:text-red-600 bg-red-50 light:bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">{error}</div>}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {prompts.map((p) => (
@@ -196,23 +196,23 @@ export default function PromptListClient() {
         <button
           onClick={() => setPage((s) => Math.max(1, s - 1))}
           disabled={page === 1}
-          className="px-4 py-2 rounded-full bg-white/5 text-white disabled:opacity-50"
+          className="px-4 py-2 rounded-full dark:bg-white/5 light:bg-gray-100 dark:text-white light:text-gray-900 disabled:opacity-50 hover:dark:bg-white/10 hover:light:bg-gray-200 transition-colors border dark:border-transparent light:border-gray-200"
         >
           Prev
         </button>
 
-        <div className="text-sm text-gray-300">Page {page}{total ? ` • ${total} items` : ''}</div>
+        <div className="text-sm dark:text-gray-300 light:text-gray-700">Page {page}{total ? ` • ${total} items` : ''}</div>
 
         <button
           onClick={() => setPage((s) => s + 1)}
           disabled={!nextUrl}
-          className="px-4 py-2 rounded-full bg-white/5 text-white disabled:opacity-50"
+          className="px-4 py-2 rounded-full dark:bg-white/5 light:bg-gray-100 dark:text-white light:text-gray-900 disabled:opacity-50 hover:dark:bg-white/10 hover:light:bg-gray-200 transition-colors border dark:border-transparent light:border-gray-200"
         >
           Next
         </button>
       </div>
 
-      {!loading && prompts.length === 0 && <div className="text-gray-400 mt-6">No prompts found.</div>}
+      {!loading && prompts.length === 0 && <div className="dark:text-gray-400 light:text-gray-600 mt-6 text-center py-12">No prompts found.</div>}
     </section>
   )
 }

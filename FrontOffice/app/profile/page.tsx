@@ -25,7 +25,6 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import { ArrowRight, User, Settings, CreditCard, Palette, Sparkles, Loader2 } from "lucide-react"
-import { UserNav } from "@/components/user-nav"
 
 export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false)

@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ArrowRight, TrendingUp, Star, Sparkles, Heart, MessageCircle, Share2, Pencil, Trash2, X, Check } from "lucide-react"
-import { UserNav } from "@/components/user-nav"
 import { toast } from 'sonner'
 import apiClient from '@/lib/api'
 import { useEffect } from 'react'
@@ -83,6 +82,9 @@ export default function CommunityPage() {
   }, [trendingArtworks])
 
   const openArtwork = async (artwork: any) => {
+    // Hide navbar when opening modal
+    window.dispatchEvent(new CustomEvent('navbar-toggle', { detail: { hide: true } }))
+    
     // Try to fetch artwork details from backend
     try {
       const res = await fetch(`${API_BASE}/artworks/${artwork.id}/` , { headers: apiClient.headers() })
@@ -126,6 +128,9 @@ export default function CommunityPage() {
     setNewComment('')
     setLikesCount(null)
     setIsLiked(false)
+    
+    // Show navbar when closing modal
+    window.dispatchEvent(new CustomEvent('navbar-toggle', { detail: { hide: false } }))
   }
 
   const toggleLike = async () => {
