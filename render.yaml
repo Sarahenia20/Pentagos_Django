@@ -23,11 +23,11 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: ALLOWED_HOSTS
-        value: localhost,127.0.0.1
+        value: localhost,127.0.0.1,pentagos-django.onrender.com
       - key: FRONTEND_URL
-        value: http://localhost:3000
+        value: https://pentagos-django.onrender.com
       - key: CORS_ALLOWED_ORIGINS
-        value: http://localhost:3000,http://127.0.0.1:3000
+        value: https://pentagos-django.onrender.com,http://localhost:3000,http://127.0.0.1:3000
       # Add your AI API keys in Render dashboard
       - key: OPENAI_API_KEY
         sync: false
@@ -49,10 +49,10 @@ services:
         value: redis://localhost:6379/0
       - key: CELERY_RESULT_BACKEND
         value: redis://localhost:6379/0
-      # Django superuser creation (optional)
+      # Django superuser creation (set these in Render dashboard)
       - key: DJANGO_SUPERUSER_USERNAME
-        sync: false
+        value: admin
       - key: DJANGO_SUPERUSER_EMAIL
-        sync: false
+        value: admin@pentaart.com
       - key: DJANGO_SUPERUSER_PASSWORD
         sync: false

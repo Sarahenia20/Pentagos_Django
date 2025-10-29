@@ -39,6 +39,20 @@ RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
+# Security settings for production
+if not DEBUG:
+    # CSRF settings
+    CSRF_TRUSTED_ORIGINS = [
+        'https://pentagos-django.onrender.com',
+        'https://*.onrender.com',
+    ]
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    
+    # HTTPS/Security headers
+    SECURE_SSL_REDIRECT = False  # Render handles SSL
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 
 # Application definition
 
