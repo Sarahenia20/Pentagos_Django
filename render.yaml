@@ -1,0 +1,58 @@
+databases:
+  - name: pentaart_db
+    databaseName: pentaart_db
+    user: pentaart_user
+
+services:
+  - type: web
+    name: pentaart-django
+    runtime: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn platform_core.wsgi:application"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pentaart_db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: false
+      - key: USE_CLOUDINARY
+        value: true
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: ALLOWED_HOSTS
+        value: localhost,127.0.0.1
+      - key: FRONTEND_URL
+        value: http://localhost:3000
+      - key: CORS_ALLOWED_ORIGINS
+        value: http://localhost:3000,http://127.0.0.1:3000
+      # Add your AI API keys in Render dashboard
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: HUGGINGFACE_TOKEN
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      # Cloudinary configuration (if using)
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      # Celery/Redis for async tasks
+      - key: CELERY_BROKER_URL
+        value: redis://localhost:6379/0
+      - key: CELERY_RESULT_BACKEND
+        value: redis://localhost:6379/0
+      # Django superuser creation (optional)
+      - key: DJANGO_SUPERUSER_USERNAME
+        sync: false
+      - key: DJANGO_SUPERUSER_EMAIL
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
