@@ -1,0 +1,12 @@
+{
+  "buildCommand": "pnpm run build",
+  "devCommand": "pnpm run dev",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://pentagos-django.onrender.com/api",
+    "NEXT_PUBLIC_BACKEND_URL": "https://pentagos-django.onrender.com",
+    "NEXT_PUBLIC_API_BASE": "https://pentagos-django.onrender.com"
+  }
+}
