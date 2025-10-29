@@ -1,0 +1,12 @@
+{
+  "buildCommand": "cd FrontOffice && npm install && npm run build",
+  "outputDirectory": "FrontOffice/.next",
+  "devCommand": "cd FrontOffice && npm run dev",
+  "installCommand": "cd FrontOffice && npm install",
+  "framework": "nextjs",
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://pentagos-django.onrender.com/api",
+    "NEXT_PUBLIC_BACKEND_URL": "https://pentagos-django.onrender.com",
+    "NEXT_PUBLIC_API_BASE": "https://pentagos-django.onrender.com"
+  }
+}

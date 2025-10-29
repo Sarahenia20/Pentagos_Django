@@ -13,6 +13,8 @@ eggs/
 lib/
 lib64/
 parts/
+# Allow Next.js lib folder
+!FrontOffice/lib/
 sdist/
 var/
 wheels/
