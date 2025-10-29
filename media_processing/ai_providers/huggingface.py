@@ -27,7 +27,12 @@ class HuggingFaceImageGenerator:
         self.use_local = use_local
         self.pipeline = None
 
-        if use_local:
+        # If use_local is not explicitly provided, prefer remote inference when
+        # an environment HUGGINGFACE_TOKEN is available in Django settings.
+        if use_local is None:
+            self.use_local = not bool(getattr(settings, 'HUGGINGFACE_TOKEN', None))
+
+        if self.use_local:
             self._init_local_pipeline()
         else:
             # For Inference API, we'll use requests
@@ -153,5 +158,9 @@ def generate_with_huggingface(prompt, model='sdxl', image_size='1024x1024', **kw
         image = generate_with_huggingface("A beautiful landscape", model='sdxl')
     """
     model_id = RECOMMENDED_MODELS.get(model, RECOMMENDED_MODELS['sdxl'])
-    generator = HuggingFaceImageGenerator(model_id=model_id, use_local=True)
+
+    # If a HUGGINGFACE_TOKEN is configured in Django settings, prefer the
+    # Inference API (remote) to avoid downloading large model files locally.
+    use_local = not bool(getattr(settings, 'HUGGINGFACE_TOKEN', None))
+    generator = HuggingFaceImageGenerator(model_id=model_id, use_local=use_local)
     return generator.generate_image(prompt, image_size, **kwargs)

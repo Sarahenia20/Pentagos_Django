@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from 'next/navigation'
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +18,7 @@ export default function RegisterPage() {
     confirmPassword: "",
   })
   const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,9 +27,43 @@ export default function RegisterPage() {
       return
     }
     setIsLoading(true)
-    // TODO: Implement Django backend registration
-    console.log("[v0] Registration attempt:", { username: formData.username, email: formData.email })
-    setTimeout(() => setIsLoading(false), 1000)
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+      const res = await fetch(`${API_BASE}/auth/register/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          password_confirm: formData.confirmPassword,
+        }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        const message = data.detail || (data.non_field_errors && data.non_field_errors.join(', ')) || JSON.stringify(data)
+        alert(`Registration failed: ${message}`)
+        return
+      }
+
+      // Expecting { user: {...}, token: '<token>' }
+      const token = data.token
+      if (token && typeof window !== 'undefined') {
+        try { localStorage.setItem('pentaart_token', token) } catch (err) { /* ignore */ }
+      }
+
+      alert('Registration successful!')
+      // Redirect to home or profile
+      router.push('/')
+
+    } catch (err: any) {
+      console.error('Registration error:', err)
+      alert('Registration error: ' + (err?.message || String(err)))
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -13,6 +13,12 @@ class UserProfile(models.Model):
 
     # Profile info
     bio = models.TextField(max_length=500, blank=True)
+    ai_bio = models.TextField(max_length=500, blank=True, help_text="AI-generated artist bio based on artwork analysis")
+    ai_bio_generated_at = models.DateTimeField(null=True, blank=True, help_text="When the AI bio was last generated")
+    artist_personality = models.TextField(max_length=1000, blank=True, help_text="AI-generated artist personality type and description")
+    artist_personality_generated_at = models.DateTimeField(null=True, blank=True, help_text="When the artist personality was last generated")
+    skill_analysis = models.JSONField(default=dict, blank=True, help_text="AI-analyzed skill metrics: composition, color_theory, creativity, complexity, technical_skill with scores and growth")
+    skill_analysis_updated_at = models.DateTimeField(null=True, blank=True, help_text="When the skill analysis was last updated")
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     website = models.URLField(blank=True)
     location = models.CharField(max_length=100, blank=True)

@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from 'next/navigation'
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,18 +14,55 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-    setTimeout(() => {
-      window.location.href = "/studio"
-    }, 1000)
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+      // NOTE: backend expects 'username' and 'password'. If you want email-login, update backend to accept email.
+      const res = await fetch(`${API_BASE}/auth/login/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: email, password }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        const msg = data.error || data.detail || JSON.stringify(data)
+        alert('Login failed: ' + msg)
+        return
+      }
+
+      const token = data.token
+      if (token && typeof window !== 'undefined') {
+        try { localStorage.setItem('pentaart_token', token) } catch (err) { /* ignore */ }
+        try { document.cookie = `pentaart_token=${token}; path=/; max-age=${60 * 60 * 24 * 30}` } catch (err) { /* ignore */ }
+      }
+
+      // Redirect to studio or home
+      router.push('/studio')
+
+    } catch (err: any) {
+      console.error('Login error:', err)
+      alert('Login error: ' + (err?.message || String(err)))
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleSocialLogin = (provider: string) => {
-    console.log("[v0] Social login:", provider)
-    // TODO: Implement OAuth flow with Django backend
+    // Redirect to backend OAuth start endpoint. The backend should handle the
+    // provider-specific flow (exchange code, create or return user, set cookie)
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
+    // Common pattern: backend exposes an endpoint to start social login, for
+    // example: /api/auth/social/github/login/ or /api/auth/social/google/login/
+    // If your backend uses a different path, adjust accordingly.
+    const url = `${API_BASE.replace(/\/api$/, '')}/auth/social/${provider}/login/?next=/studio`
+    // Open in the same window to let backend perform redirects/cookie setting
+    window.location.href = url
   }
 
   return (

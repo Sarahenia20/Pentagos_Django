@@ -3,7 +3,10 @@ import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/toaster'
+import ClientRoot from '@/components/ClientRoot'
+import ConditionalNav from '@/components/ConditionalNav'
 import './globals.css'
+import AuthHydrate from '@/components/auth-hydrate'
 
 export const metadata: Metadata = {
   title: 'PentaaART',
@@ -17,17 +20,19 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    // Use the font classNames to ensure identical server/client markup
+    <html lang="en" className={`${GeistSans.className} ${GeistMono.className}`}>
       <head>
-        <style>{`
-html {
-  font-family: ${GeistSans.style.fontFamily};
-  --font-sans: ${GeistSans.variable};
-  --font-mono: ${GeistMono.variable};
-}
-        `}</style>
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `:root{--font-sans: ${GeistSans.variable}; --font-mono: ${GeistMono.variable};}`,
+          }}
+        />
       </head>
       <body>
+        <AuthHydrate />
+        <ClientRoot />
+        <ConditionalNav />
         {children}
         <Toaster />
         <Analytics />

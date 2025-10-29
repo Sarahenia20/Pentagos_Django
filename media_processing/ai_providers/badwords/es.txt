@@ -1,0 +1,8 @@
+# Spanish badwords (starter list)
+spam
+estafa
+mierda
+puta
+gilipollas
+idiota
+# add more words as needed

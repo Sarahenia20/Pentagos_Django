@@ -5,6 +5,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from accounts import views as accounts_views
 from rest_framework.routers import DefaultRouter
 from rest_framework.authtoken import views as authtoken_views
 
@@ -12,16 +13,22 @@ from rest_framework.authtoken import views as authtoken_views
 from . import admin as custom_admin
 
 # Import viewsets
-from media_processing.views import ArtworkViewSet, TagViewSet, CollectionViewSet, AlgorithmicPatternsView
+from media_processing.views import ArtworkViewSet, TagViewSet, CollectionViewSet, AlgorithmicPatternsView, ModerationView, CommentViewSet
 from accounts.views import UserProfileViewSet, ActivityLogViewSet
+from prompt_library.views import PromptTemplateViewSet, CategoryViewSet, TagViewSet as PromptTagViewSet, UserPromptLibraryViewSet
 
 # Create router for API endpoints
 router = DefaultRouter()
 router.register(r'artworks', ArtworkViewSet, basename='artwork')
 router.register(r'tags', TagViewSet, basename='tag')
 router.register(r'collections', CollectionViewSet, basename='collection')
+router.register(r'comments', CommentViewSet, basename='comment')
 router.register(r'profiles', UserProfileViewSet, basename='profile')
 router.register(r'activities', ActivityLogViewSet, basename='activity')
+router.register(r'prompt-templates', PromptTemplateViewSet, basename='prompttemplate')
+router.register(r'prompt-categories', CategoryViewSet, basename='promptcategory')
+router.register(r'prompt-tags', PromptTagViewSet, basename='prompttag')
+router.register(r'user-prompts', UserPromptLibraryViewSet, basename='userprompts')
 
 urlpatterns = [
     # Admin
@@ -30,7 +37,15 @@ urlpatterns = [
     # API endpoints
     path('api/', include(router.urls)),
     path('api/auth/', include('accounts.urls')),
+    # Social OAuth endpoints at root so frontend can redirect to /auth/social/... (matches Github OAuth app callback)
+    path('auth/social/github/login/', accounts_views.github_login, name='github_login'),
+    path('auth/social/github/callback/', accounts_views.github_callback, name='github_callback'),
+    # Google OAuth
+    path('auth/social/google/login/', accounts_views.google_login, name='google_login'),
+    path('auth/social/google/callback/', accounts_views.google_callback, name='google_callback'),
     path('api/algorithmic-patterns/', AlgorithmicPatternsView.as_view(), name='algorithmic_patterns'),
+    path('api/moderate/', ModerationView.as_view(), name='moderate'),
+    path('api/prompts/generate', include('prompt_library.generate_urls')),
 
     # API authentication
     path('api-auth/', include('rest_framework.urls')),

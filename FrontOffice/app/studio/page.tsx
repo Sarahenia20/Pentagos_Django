@@ -6,7 +6,6 @@ import { toast } from "sonner"
 import { apiClient } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { UserNav } from "@/components/user-nav"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -295,8 +294,6 @@ export default function StudioPage() {
       <div className="absolute inset-0 dark:bg-gradient-to-br dark:from-purple-900/20 dark:via-black dark:to-pink-900/20 light:bg-gradient-to-br light:from-purple-100 light:via-white light:to-pink-100" />
 
       <div className="relative z-10">
-        <UserNav />
-
         <main className="container mx-auto px-4 py-8">
           <div className="max-w-5xl mx-auto space-y-6">
 

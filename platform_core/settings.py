@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     # Third-party apps
     'rest_framework',
     'rest_framework.authtoken',
+    'django_filters',
     'corsheaders',
     'cloudinary_storage',
     'cloudinary',
@@ -52,6 +53,7 @@ INSTALLED_APPS = [
     'api',
     'dashboard',
     'media_processing',
+    'prompt_library',
 ]
 
 MIDDLEWARE = [
@@ -181,15 +183,21 @@ REST_FRAMEWORK = {
 }
 
 # CORS Settings (for Next.js frontend)
-# Allow all origins in development (change in production!)
+# CORS settings
+# Use explicit allowed origin(s) so Access-Control-Allow-Origin can be set
+# correctly when credentials are used. Read FRONTEND_URL from env.
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
 if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
+    # In dev, restrict CORS to the configured frontend origin to allow cookies
+    CORS_ALLOWED_ORIGINS = [FRONTEND_URL]
 else:
     CORS_ALLOWED_ORIGINS = config(
         'CORS_ALLOWED_ORIGINS',
         default='http://localhost:3000,http://127.0.0.1:3000',
         cast=lambda v: [s.strip() for s in v.split(',')]
     )
+
+# Allow cookies/credentials over CORS
 CORS_ALLOW_CREDENTIALS = True
 
 # Celery Configuration (for async art generation)
@@ -203,6 +211,26 @@ CELERY_TIMEZONE = 'UTC'
 # AI Provider API Keys
 OPENAI_API_KEY = config('OPENAI_API_KEY', default='')
 GEMINI_API_KEY = config('GEMINI_API_KEY', default='')
+# Generative AI service configuration
+# Base URL for Google Generative AI (or alternate provider). Defaults to Google's generative API.
+GENERATIVE_API_BASE = config('GENERATIVE_API_BASE', default='https://generative.googleapis.com/v1')
+# Model name to call (without base). Example: 'gemini-pro' or a full model resource name if needed.
+GEMINI_MODEL = config('GEMINI_MODEL', default='gemini-pro')
+# Authentication method for generative API: 'key' will append ?key=API_KEY, 'bearer' will use Authorization: Bearer
+GEMINI_API_AUTH_METHOD = config('GEMINI_API_AUTH_METHOD', default='key')
+HUGGINGFACE_TOKEN = config('HUGGINGFACE_TOKEN', default='')
+GROQ_API_KEY = config('GROQ_API_KEY', default='')
+
+# OAuth / Social providers
+GITHUB_CLIENT_ID = config('GITHUB_CLIENT_ID', default='')
+GITHUB_CLIENT_SECRET = config('GITHUB_CLIENT_SECRET', default='')
+
+# Frontend URL (used to build redirect links)
+# FRONTEND_URL is defined near the CORS settings above
+
+# Google OAuth
+GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
+GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
 
 # Cloudinary Configuration (Optional - for cloud image storage)
 USE_CLOUDINARY = config('USE_CLOUDINARY', default=False, cast=bool)
@@ -223,3 +251,41 @@ else:
 MAX_GENERATION_TIME = 300  # 5 minutes timeout
 ALLOWED_IMAGE_SIZES = ['512x512', '1024x1024', '1024x1792', '1792x1024']
 DEFAULT_IMAGE_SIZE = '1024x1024'
+
+# -------------------- Email settings --------------------
+# Support for simple SMTP configuration via environment variables
+# Environment keys expected (provided in your .env):
+# MAIL_MAILER, MAIL_HOST, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD,
+# MAIL_ENCRYPTION (tls|ssl|none), MAIL_FROM_ADDRESS, MAIL_FROM_NAME
+MAIL_MAILER = config('MAIL_MAILER', default='smtp')
+MAIL_HOST = config('MAIL_HOST', default='localhost')
+MAIL_PORT = config('MAIL_PORT', default=25, cast=int)
+MAIL_USERNAME = config('MAIL_USERNAME', default='')
+MAIL_PASSWORD = config('MAIL_PASSWORD', default='')
+MAIL_ENCRYPTION = config('MAIL_ENCRYPTION', default='')
+MAIL_FROM_ADDRESS = config('MAIL_FROM_ADDRESS', default='webmaster@localhost')
+MAIL_FROM_NAME = config('MAIL_FROM_NAME', default='')
+
+
+if MAIL_MAILER.lower() in ('smtp', 'mail'):
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = MAIL_HOST
+    EMAIL_PORT = MAIL_PORT
+    EMAIL_HOST_USER = MAIL_USERNAME
+    EMAIL_HOST_PASSWORD = MAIL_PASSWORD
+    # MAIL_ENCRYPTION: 'tls' or 'ssl'
+    if MAIL_ENCRYPTION.lower() == 'tls':
+        EMAIL_USE_TLS = True
+        EMAIL_USE_SSL = False
+    elif MAIL_ENCRYPTION.lower() == 'ssl':
+        EMAIL_USE_SSL = True
+        EMAIL_USE_TLS = False
+    else:
+        EMAIL_USE_TLS = False
+        EMAIL_USE_SSL = False
+
+    DEFAULT_FROM_EMAIL = f"{MAIL_FROM_NAME} <{MAIL_FROM_ADDRESS}>" if MAIL_FROM_NAME else MAIL_FROM_ADDRESS
+else:
+    # Fallback to console backend in non-SMTP cases to avoid silent failures in dev
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = MAIL_FROM_ADDRESS
